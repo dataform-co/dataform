@@ -1,10 +1,10 @@
 import { BigQuery, Dataset, Table, TableField, TableMetadata } from "@google-cloud/bigquery";
 import { expect } from "chai";
-import { EventEmitter } from "events";
-import { AuthClient, gaxios, Impersonated } from "google-auth-library";
+import { Impersonated } from "google-auth-library";
 import { anything, instance, mock, when } from "ts-mockito";
 
 import {
+  BIGQUERY_EXTRA_SCOPES,
   BigQueryDbAdapter,
   createAuthClient,
   createBigQueryClientProvider,
@@ -12,6 +12,7 @@ import {
   DeferredAuthClient,
   getBigQueryClientOptions,
 } from "df/cli/api/dbadapters/bigquery";
+import { FakeSourceClient } from "df/cli/api/testing/fake_source_client";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 
@@ -54,26 +55,6 @@ async function setMetadataAndCaptureSchema(
   return capturedSchema;
 }
 
-/** A source AuthClient that records its requests and answers them with an impersonated token. */
-class FakeSourceClient extends AuthClient {
-  public readonly requests: gaxios.GaxiosOptions[] = [];
-
-  public async getAccessToken() {
-    return { token: "source-token" };
-  }
-
-  public async getRequestHeaders() {
-    return new Headers({ authorization: "Bearer source-token" });
-  }
-
-  public async request<T>(options: gaxios.GaxiosOptions): gaxios.GaxiosPromise<T> {
-    this.requests.push(options);
-    return {
-      data: { accessToken: "impersonated-token", expireTime: "2099-01-01T00:00:00Z" },
-    } as any;
-  }
-}
-
 suite("BigQueryDbAdapter", () => {
   suite("getBigQueryClientOptions", () => {
     test("passes the parsed service account key to the client", () => {
@@ -95,6 +76,7 @@ suite("BigQueryDbAdapter", () => {
       expect(options).to.deep.include({
         projectId: "target-project-id",
         location: "EU",
+        scopes: ["https://www.googleapis.com/auth/drive.readonly"],
         credentials: serviceAccountKey,
       });
     });
@@ -107,6 +89,7 @@ suite("BigQueryDbAdapter", () => {
         createAuthClient(credentials),
       );
       expect(options).to.deep.include({ projectId: "adc-project-id", location: "US" });
+      expect(options.scopes).to.deep.equal(["https://www.googleapis.com/auth/drive.readonly"]);
       expect(Boolean(options.credentials)).to.equal(false);
       expect(options.authClient).to.equal(undefined);
     });
@@ -154,6 +137,14 @@ suite("BigQueryDbAdapter", () => {
           credentials: "{not-valid-json",
         }),
       ).to.throw(SyntaxError);
+      expect(() =>
+        createAuthClient({
+          projectId: "target-project-id",
+          location: "US",
+          credentials: "{not-valid-json",
+          impersonateServiceAccount: TARGET_SERVICE_ACCOUNT,
+        }),
+      ).to.throw(SyntaxError);
     });
   });
 
@@ -164,17 +155,24 @@ suite("BigQueryDbAdapter", () => {
     const defaultClient = clientProvider();
     expect(defaultClient.projectId).to.equal("default-project");
     expect(defaultClient.location).to.equal("EU");
+    // google-auth-library marks scopes private on GoogleAuth.
+    expect((defaultClient.authClient as unknown as { scopes: string[] }).scopes).to.deep.equal([
+      "https://www.googleapis.com/auth/bigquery",
+      "https://www.googleapis.com/auth/drive.readonly",
+    ]);
     expect(clientProvider()).to.equal(defaultClient);
     expect(clientProvider("other-project").projectId).to.equal("other-project");
   });
 
   test("createBigQueryClientProvider shares one impersonated auth client between projects", async () => {
+    const sourceClient = new FakeSourceClient();
     const clientProvider = createBigQueryClientProvider(
       dataform.BigQuery.create({
         projectId: "default-project",
         location: "US",
         impersonateServiceAccount: TARGET_SERVICE_ACCOUNT,
       }),
+      sourceClient,
     );
     const defaultAuthClient = await clientProvider().authClient.getClient();
     expect(defaultAuthClient).to.be.instanceOf(Impersonated);
@@ -184,6 +182,21 @@ suite("BigQueryDbAdapter", () => {
     expect(await clientProvider("other-project").authClient.getClient()).to.equal(
       defaultAuthClient,
     );
+
+    await defaultAuthClient.getAccessToken();
+    expect(sourceClient.requests).to.have.lengthOf(1);
+    expect(sourceClient.requests[0]).to.deep.include({
+      method: "POST",
+      url: `https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${TARGET_SERVICE_ACCOUNT}:generateAccessToken`,
+      data: {
+        delegates: [],
+        scope: [
+          "https://www.googleapis.com/auth/cloud-platform",
+          "https://www.googleapis.com/auth/drive.readonly",
+        ],
+        lifetime: "3600s",
+      },
+    });
   });
 
   test("impersonated client exchanges the lazily resolved source credentials for a token", async () => {
@@ -208,9 +221,31 @@ suite("BigQueryDbAdapter", () => {
       url: `https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${TARGET_SERVICE_ACCOUNT}:generateAccessToken`,
       data: {
         delegates: [],
+        scope: ["https://www.googleapis.com/auth/cloud-platform"],
+        lifetime: "3600s",
+      },
+    });
+  });
+
+  test("impersonated client includes extra scopes in the token exchange request", async () => {
+    const sourceClient = new FakeSourceClient();
+    const impersonatedClient = createImpersonatedClient(
+      TARGET_SERVICE_ACCOUNT,
+      new DeferredAuthClient(async () => sourceClient),
+      BIGQUERY_EXTRA_SCOPES,
+    );
+
+    await impersonatedClient.getAccessToken();
+
+    expect(sourceClient.requests.length).to.equal(1);
+    expect(sourceClient.requests[0]).to.deep.include({
+      method: "POST",
+      url: `https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${TARGET_SERVICE_ACCOUNT}:generateAccessToken`,
+      data: {
+        delegates: [],
         scope: [
           "https://www.googleapis.com/auth/cloud-platform",
-          "https://www.googleapis.com/auth/drive",
+          "https://www.googleapis.com/auth/drive.readonly",
         ],
         lifetime: "3600s",
       },
@@ -353,6 +388,67 @@ suite("BigQueryDbAdapter", () => {
       caughtError = e;
     }
     expect(caughtError?.message).to.equal("Access Denied: Dataset project1:restricted_schema");
+  });
+
+  test("table() returns null when table metadata is not found", async () => {
+    const mockBigQuery = mock<BigQuery>();
+    const mockDataset = mock<Dataset>();
+    const mockDeletedTable = mock<Table>();
+
+    when(mockBigQuery.dataset("schema1")).thenReturn(instance(mockDataset));
+    when(mockDataset.table("deleted_table")).thenReturn(instance(mockDeletedTable));
+    when(mockDeletedTable.getMetadata()).thenReject(
+      Object.assign(new Error("Not found"), { errors: [{ reason: "notFound" }] }),
+    );
+
+    const adapter = new BigQueryDbAdapter(
+      dataform.BigQuery.create({ projectId: "project1", location: "US" }),
+      { clientProvider: () => instance(mockBigQuery) },
+    );
+
+    expect(
+      await adapter.table({ database: "project1", schema: "schema1", name: "deleted_table" }),
+    ).to.equal(null);
+  });
+
+  test("tables() omits concurrently deleted tables", async () => {
+    const mockBigQuery = mock<BigQuery>();
+    const mockDataset = mock<Dataset>();
+    const mockLiveTable = mock<Table>();
+    const mockDeletedTable = mock<Table>();
+
+    when(mockLiveTable.id).thenReturn("live_table");
+    when(mockDeletedTable.id).thenReturn("deleted_table");
+    when(mockBigQuery.dataset("schema1")).thenReturn(instance(mockDataset));
+    when(mockDataset.getTables(anything())).thenResolve([
+      [instance(mockLiveTable), instance(mockDeletedTable)],
+      {},
+      {},
+    ]);
+    when(mockDataset.table("live_table")).thenReturn(instance(mockLiveTable));
+    when(mockDataset.table("deleted_table")).thenReturn(instance(mockDeletedTable));
+    when(mockLiveTable.getMetadata()).thenResolve([
+      {
+        type: "TABLE",
+        tableReference: { projectId: "project1", datasetId: "schema1", tableId: "live_table" },
+        schema: { fields: [{ name: "col1", type: "STRING" }] },
+        lastModifiedTime: "123456789",
+      },
+      undefined,
+    ]);
+    when(mockDeletedTable.getMetadata()).thenReject(
+      Object.assign(new Error("Not found"), { errors: [{ reason: "notFound" }] }),
+    );
+
+    const adapter = new BigQueryDbAdapter(
+      dataform.BigQuery.create({ projectId: "project1", location: "US" }),
+      { clientProvider: () => instance(mockBigQuery) },
+    );
+
+    const tables = await adapter.tables("project1", "schema1");
+    expect(tables.map((t) => t.target)).to.deep.equal([
+      { database: "project1", schema: "schema1", name: "live_table" },
+    ]);
   });
 
   test("setMetadata handles action without columns", async () => {
@@ -571,61 +667,127 @@ suite("BigQueryDbAdapter", () => {
     expect(schema).to.deep.equal([{ name: "id", type: "INTEGER", description: "id desc" }]);
   });
 
-  test("search() filters out tables whose metadata is not found", async () => {
-    const projectId = "project1";
-    const liveSchema = "live_schema";
-    const deletedSchema = "deleted_schema";
-    const tableName = "table1";
+  suite("executeRaw", () => {
+    interface IFakePage {
+      rows: any[];
+      apiResponse?: any;
+    }
 
-    const mockBigQuery: any = {
-      createQueryStream: () => {
-        const stream = new EventEmitter();
-        process.nextTick(() => {
-          stream.emit("data", {
-            table_catalog: projectId,
-            table_schema: liveSchema,
-            table_name: tableName,
-          });
-          stream.emit("data", {
-            table_catalog: projectId,
-            table_schema: deletedSchema,
-            table_name: tableName,
-          });
-          stream.emit("end");
-        });
-        return stream;
-      },
-      dataset: (schema: string) => ({
-        table: (name: string) => ({
-          getMetadata: () => {
-            if (schema === deletedSchema) {
-              return Promise.reject({ errors: [{ reason: "notFound" }] });
-            }
-            return Promise.resolve([
-              {
-                type: "TABLE",
-                tableReference: { projectId, datasetId: schema, tableId: name },
-                schema: { fields: [{ name: "col1", type: "STRING" }] },
-                lastModifiedTime: "123456789",
-              },
-            ]);
-          },
-        }),
-      }),
-    };
+    /**
+     * A fake BigQuery client that answers a query with the first page and the requests for its
+     * next pages with the following ones. It records the arguments of every call.
+     */
+    function fakeBigQueryReturning(pages: IFakePage[]) {
+      const queryArguments: any[][] = [];
+      const nextPageOptions: any[] = [];
+      let pagesReturned = 0;
+      const job = {
+        getQueryResults: async (options: any): Promise<any[]> => {
+          nextPageOptions.push(options);
+          return nextAnswer();
+        },
+      };
+      function nextAnswer(): any[] {
+        const page = pages[pagesReturned++];
+        const nextPage =
+          pagesReturned < pages.length ? { job, pageToken: `page-${pagesReturned}` } : null;
+        return [page.rows, nextPage, page.apiResponse ?? {}];
+      }
+      const client: any = {
+        query: async (...args: any[]): Promise<any[]> => {
+          queryArguments.push(args);
+          return nextAnswer();
+        },
+      };
+      return { client, queryArguments, nextPageOptions };
+    }
 
-    const credentials = dataform.BigQuery.create({ projectId, location: "US" });
-    const adapter = new BigQueryDbAdapter(credentials, {
-      clientProvider: () => mockBigQuery,
+    function adapterFor(client: any) {
+      return new BigQueryDbAdapter(dataform.BigQuery.create({ projectId: "p", location: "US" }), {
+        clientProvider: () => client,
+      });
+    }
+
+    const row = (value: string) => ({ f: [{ v: value }] });
+
+    test("passes rowLimit to the query and asks the client for a single page", async () => {
+      const fake = fakeBigQueryReturning([{ rows: [row("1"), row("2")] }]);
+
+      const result = await adapterFor(fake.client).executeRaw("SELECT 1", { rowLimit: 2 });
+
+      expect(result.rows).to.deep.equal([row("1"), row("2")]);
+      const [query, queryOptions] = fake.queryArguments[0];
+      expect(query.maxResults).to.equal(2);
+      expect(queryOptions).to.deep.equal({ maxResults: 2 });
+      expect(fake.nextPageOptions).to.deep.equal([]);
     });
 
-    const result = await adapter.search("schema");
+    test("waits for a query that is still running when rowLimit is set", async () => {
+      const fake = fakeBigQueryReturning([
+        { rows: [], apiResponse: { jobComplete: false } },
+        {
+          rows: [row("1"), row("2")],
+          apiResponse: { jobComplete: true, schema: { fields: [{ name: "x", type: "INTEGER" }] } },
+        },
+      ]);
 
-    expect(result.length).to.equal(1);
-    expect(result[0].target).to.eql({
-      database: projectId,
-      schema: liveSchema,
-      name: tableName,
+      const result = await adapterFor(fake.client).executeRaw("SELECT 1", { rowLimit: 2 });
+
+      expect(result.rows).to.deep.equal([row("1"), row("2")]);
+      expect(result.schema.map((field) => field.name)).to.deep.equal(["x"]);
     });
+
+    test("fetches the next pages until rowLimit is reached", async () => {
+      const fake = fakeBigQueryReturning([
+        { rows: [row("1")], apiResponse: { schema: { fields: [{ name: "x", type: "INTEGER" }] } } },
+        { rows: [row("2"), row("3")] },
+        { rows: [row("4"), row("5")] },
+        { rows: [row("6")] },
+      ]);
+
+      const result = await adapterFor(fake.client).executeRaw("SELECT 1", { rowLimit: 4 });
+
+      expect(result.rows).to.deep.equal([row("1"), row("2"), row("3"), row("4")]);
+      expect(result.schema.map((field) => field.name)).to.deep.equal(["x"]);
+      expect(
+        fake.nextPageOptions.map(({ pageToken, maxResults }) => ({ pageToken, maxResults })),
+      ).to.deep.equal([
+        { pageToken: "page-1", maxResults: 3 },
+        { pageToken: "page-2", maxResults: 1 },
+      ]);
+    });
+
+    test("returns fewer rows than rowLimit when the query has no more", async () => {
+      const fake = fakeBigQueryReturning([{ rows: [row("1")] }, { rows: [row("2")] }]);
+
+      const result = await adapterFor(fake.client).executeRaw("SELECT 1", { rowLimit: 5 });
+
+      expect(result.rows).to.deep.equal([row("1"), row("2")]);
+    });
+
+    test("passes maximumBytesBilled to the query as a string", async () => {
+      const fake = fakeBigQueryReturning([{ rows: [] }]);
+
+      await adapterFor(fake.client).executeRaw("SELECT 1", { maximumBytesBilled: 1048576 });
+
+      expect(fake.queryArguments[0][0].maximumBytesBilled).to.equal("1048576");
+    });
+
+    for (const [description, options] of [
+      ["no options are given", undefined],
+      ["the limits are unset", {}],
+      ["the query is a dry run", { rowLimit: 2, bigquery: { dryRun: true } }],
+    ] as const) {
+      test(`lets the client fetch every page when ${description}`, async () => {
+        const fake = fakeBigQueryReturning([{ rows: [row("1")] }]);
+
+        const result = await adapterFor(fake.client).executeRaw("SELECT 1", options);
+
+        expect(result.rows).to.deep.equal([row("1")]);
+        expect(fake.queryArguments[0]).to.have.lengthOf(1);
+        expect(fake.queryArguments[0][0].maximumBytesBilled).to.equal(undefined);
+        expect(fake.nextPageOptions).to.deep.equal([]);
+      });
+    }
   });
 });

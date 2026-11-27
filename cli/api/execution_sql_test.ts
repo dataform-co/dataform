@@ -41,47 +41,47 @@ suite("ExecutionSql with 'onSchemaChange'", () => {
     ],
   };
 
-  test("generates procedure for FAIL strategy", () => {
+  test("generates script for FAIL strategy", () => {
     const table = {
       ...baseTable,
       onSchemaChange: dataform.OnSchemaChange.FAIL,
     };
     const tasks = executionSql.publishTasks(table, { fullRefresh: false }, tableMetadata);
-    const procedureSql = tasks
+    const sql = tasks
       .build()
       .map((t) => t.statement)
       .join("\n;\n");
     const expectedSql = fs.readFileSync("cli/api/goldens/on_schema_change_fail.sql", "utf8");
-    expect(procedureSql).to.equal(expectedSql.trim());
+    expect(sql).to.equal(expectedSql.trim());
   });
 
-  test("generates procedure for EXTEND strategy", () => {
+  test("generates script for EXTEND strategy", () => {
     const table = {
       ...baseTable,
       onSchemaChange: dataform.OnSchemaChange.EXTEND,
     };
     const tasks = executionSql.publishTasks(table, { fullRefresh: false }, tableMetadata);
-    const procedureSql = tasks
+    const sql = tasks
       .build()
       .map((t) => t.statement)
       .join("\n;\n");
     const expectedSql = fs.readFileSync("cli/api/goldens/on_schema_change_extend.sql", "utf8");
-    expect(procedureSql).to.equal(expectedSql.trim());
+    expect(sql).to.equal(expectedSql.trim());
   });
 
-  test("generates procedure for SYNCHRONIZE strategy", () => {
+  test("generates script for SYNCHRONIZE strategy", () => {
     const table = {
       ...baseTable,
       onSchemaChange: dataform.OnSchemaChange.SYNCHRONIZE,
       uniqueKey: ["id"],
     };
     const tasks = executionSql.publishTasks(table, { fullRefresh: false }, tableMetadata);
-    const procedureSql = tasks
+    const sql = tasks
       .build()
       .map((t) => t.statement)
       .join("\n;\n");
     const expectedSql = fs.readFileSync("cli/api/goldens/on_schema_change_synchronize.sql", "utf8");
-    expect(procedureSql).to.equal(expectedSql.trim());
+    expect(sql).to.equal(expectedSql.trim());
   });
 
   test("generates simple merge for IGNORE strategy", () => {
@@ -91,12 +91,12 @@ suite("ExecutionSql with 'onSchemaChange'", () => {
       uniqueKey: ["id"],
     };
     const tasks = executionSql.publishTasks(table, { fullRefresh: false }, tableMetadata);
-    const procedureSql = tasks
+    const sql = tasks
       .build()
       .map((t) => t.statement)
       .join("\n;\n");
     const expectedSql = fs.readFileSync("cli/api/goldens/on_schema_change_ignore.sql", "utf8");
-    expect(procedureSql).to.equal(expectedSql.trim());
+    expect(sql).to.equal(expectedSql.trim());
   });
 
   test("generates INSERT_OVERWRITE script for IGNORE strategy", () => {
@@ -138,7 +138,7 @@ suite("ExecutionSql with 'onSchemaChange'", () => {
     expect(sql).to.equal(expectedSql.trim());
   });
 
-  test("places all DECLARE statements before any executable statement in generated procedure body", () => {
+  test("places all DECLARE statements before any executable statement in generated script body", () => {
     for (const strategy of [
       dataform.OnSchemaChange.FAIL,
       dataform.OnSchemaChange.EXTEND,
@@ -150,11 +150,11 @@ suite("ExecutionSql with 'onSchemaChange'", () => {
         uniqueKey: ["id"],
       };
       const tasks = executionSql.publishTasks(table, { fullRefresh: false }, tableMetadata);
-      const createProcedureSql = tasks.build()[0].statement;
-      expect(createProcedureSql).to.include("CREATE OR REPLACE PROCEDURE");
+      const scriptSql = tasks.build()[0].statement;
+      expect(scriptSql).to.match(/^BEGIN\n/);
 
-      const procedureBody = createProcedureSql.split("BEGIN\n")[1].split("\nEND;")[0];
-      const statements = procedureBody
+      const scriptBody = scriptSql.split("BEGIN\n")[1].split("\nEXCEPTION WHEN ERROR THEN")[0];
+      const statements = scriptBody
         .split(";")
         .map((s) =>
           s
@@ -179,7 +179,7 @@ suite("ExecutionSql with 'onSchemaChange'", () => {
     }
   });
 
-  test("executes dynamic DML inside procedure and does not emit static DML outside procedure for onSchemaChange", () => {
+  test("executes dynamic DML inside the script block for onSchemaChange", () => {
     for (const strategy of [
       dataform.OnSchemaChange.FAIL,
       dataform.OnSchemaChange.EXTEND,
@@ -195,21 +195,24 @@ suite("ExecutionSql with 'onSchemaChange'", () => {
       expect(builtTasks.length).to.equal(1);
 
       const fullSql = builtTasks[0].statement;
-      const [procedurePart, ...rest] = fullSql.split("\nEND;\n");
-      const afterProcedurePart = rest.join("\nEND;\n");
-      expect(procedurePart).to.include("SET dataform_columns_list =");
-      expect(procedurePart).to.include("SET dataform_columns_merge =");
-      expect(procedurePart).to.include("EXECUTE IMMEDIATE");
-      expect(afterProcedurePart).to.not.include("insert into");
-      expect(afterProcedurePart).to.not.include("merge ");
-      expect(afterProcedurePart).to.not.include("field1");
+
+      const parts = fullSql.split("\nEXCEPTION WHEN ERROR THEN\n");
+      expect(parts.length).to.equal(2);
+      const [bodyPart, errorHandlerPart] = parts;
+      expect(bodyPart).to.match(/^BEGIN\n/);
+      expect(bodyPart).to.include("SET dataform_columns_list =");
+      expect(bodyPart).to.include("SET dataform_columns_merge =");
+      expect(bodyPart).to.include("EXECUTE IMMEDIATE");
+      expect(errorHandlerPart).to.match(/\n  RAISE;\nEND;$/);
+      expect(errorHandlerPart).to.not.include("insert into");
+      expect(errorHandlerPart).to.not.include("merge ");
+      expect(errorHandlerPart).to.not.include("field1");
     }
   });
 
-  test("error handler outside the procedure only drops fully qualified tables", () => {
-    // The staging table is scoped to the stored procedure, so it is not resolvable
-    // from the calling script. Referencing it there raises "must be qualified with a
-    // dataset", which masks the original error and leaks the procedure.
+  test("error handler only drops fully qualified tables", () => {
+    // The handler only needs to drop the empty temp table used for the schema comparison. The
+    // staging table is a script-scoped temporary table, which BigQuery drops with the script.
     for (const strategy of [
       dataform.OnSchemaChange.FAIL,
       dataform.OnSchemaChange.EXTEND,
@@ -282,7 +285,7 @@ suite("ExecutionSql with 'onSchemaChange'", () => {
     }
   });
 
-  test("places incrementalPreOps and incrementalPostOps inside procedure with inner BEGIN...END block for onSchemaChange", () => {
+  test("places incrementalPreOps and incrementalPostOps inside script block with inner BEGIN...END block for onSchemaChange", () => {
     const table: dataform.ITable = {
       ...baseTable,
       onSchemaChange: dataform.OnSchemaChange.EXTEND,
@@ -295,12 +298,12 @@ suite("ExecutionSql with 'onSchemaChange'", () => {
     expect(builtTasks.length).to.equal(1);
 
     const fullSql = builtTasks[0].statement;
-    expect(fullSql).to.match(/^CREATE OR REPLACE PROCEDURE/);
+    expect(fullSql).to.match(/^BEGIN\nDECLARE watermark TIMESTAMP;/);
     expect(fullSql).to.include(
       "BEGIN\nDECLARE watermark TIMESTAMP;\nSET watermark = CURRENT_TIMESTAMP();\n\nBEGIN\n\n-- Declare variables for schema comparison and strategy execution.",
     );
     expect(fullSql).to.include(
-      "-- Cleanup staging table\nDROP TABLE IF EXISTS `staging_table_temp_test_uuid`;\nEND;\n\nSELECT watermark;\nEND;",
+      "-- Cleanup staging table\nDROP TABLE IF EXISTS `staging_table_temp_test_uuid`;\nEND;\n\nSELECT watermark;\nEXCEPTION WHEN ERROR THEN",
     );
   });
 
@@ -317,20 +320,58 @@ suite("ExecutionSql with 'onSchemaChange'", () => {
 
     const fullSql = builtTasks[0].statement;
     // The internal variables are declared at the start of the inner block...
-    expect(fullSql).to.include(
-      "OPTIONS(strict_mode=false)\nBEGIN\nBEGIN\n\n-- Declare variables for schema comparison and strategy execution.\nDECLARE dataform_columns ARRAY<STRING>;",
+    expect(fullSql).to.match(
+      /^BEGIN\nBEGIN\n\n-- Declare variables for schema comparison and strategy execution.\nDECLARE dataform_columns ARRAY<STRING>;/,
     );
     // ...which is closed before the post-operations, so they are out of scope there.
-    const [procedureSql] = fullSql.split("SELECT 1;");
-    expect(procedureSql).to.match(/\nEND;\n\n$/);
-    expect((procedureSql.match(/^BEGIN$/gm) || []).length).to.equal(
-      (procedureSql.match(/^END;$/gm) || []).length + 1,
+    const [beforePostOps] = fullSql.split("SELECT 1;");
+    expect(beforePostOps).to.match(/\nEND;\n\n$/);
+    expect((beforePostOps.match(/^BEGIN$/gm) || []).length).to.equal(
+      (beforePostOps.match(/^END;$/gm) || []).length + 1,
     );
     const declaredVariables = [...fullSql.matchAll(/^\s*DECLARE (\w+)/gm)].map((match) => match[1]);
     expect(declaredVariables.length).to.be.greaterThan(0);
     for (const declaredVariable of declaredVariables) {
       expect(declaredVariable).to.match(/^dataform_/);
     }
+  });
+
+  test("extracts lowercased top-level column names from uniqueKey entries in SYNCHRONIZE drop guard while keeping MERGE ON keys intact", () => {
+    const table: dataform.ITable = {
+      ...baseTable,
+      onSchemaChange: dataform.OnSchemaChange.SYNCHRONIZE,
+      uniqueKey: [
+        "`My-Id`",
+        " `First Name` ",
+        "`X`",
+        "`My-Rec`.`sub-id`",
+        "`my-rec`.other",
+        "Other_Rec.`sub-id`",
+        "SAFE.PARSE_DATE('%Y', dt)",
+        "`",
+        "``",
+        "Plain_Id",
+      ],
+    };
+    const fullSql = executionSql
+      .publishTasks(table, { fullRefresh: false }, tableMetadata)
+      .build()[0].statement;
+
+    expect(fullSql).to.include(
+      `WHERE LOWER(col) IN UNNEST(["my-id","first name","x","my-rec","other_rec","safe.parse_date('%y', dt)","\`","\`\`","plain_id"])`,
+    );
+    expect(fullSql).to.include(
+      "on DATAFORM_DEST.`My-Id` = DATAFORM_SOURCE.`My-Id` " +
+        "and DATAFORM_DEST. `First Name`  = DATAFORM_SOURCE. `First Name`  " +
+        "and DATAFORM_DEST.`X` = DATAFORM_SOURCE.`X` " +
+        "and DATAFORM_DEST.`My-Rec`.`sub-id` = DATAFORM_SOURCE.`My-Rec`.`sub-id` " +
+        "and DATAFORM_DEST.`my-rec`.other = DATAFORM_SOURCE.`my-rec`.other " +
+        "and DATAFORM_DEST.Other_Rec.`sub-id` = DATAFORM_SOURCE.Other_Rec.`sub-id` " +
+        "and DATAFORM_DEST.SAFE.PARSE_DATE('%Y', dt) = DATAFORM_SOURCE.SAFE.PARSE_DATE('%Y', dt) " +
+        "and DATAFORM_DEST.` = DATAFORM_SOURCE.` " +
+        "and DATAFORM_DEST.`` = DATAFORM_SOURCE.`` " +
+        "and DATAFORM_DEST.Plain_Id = DATAFORM_SOURCE.Plain_Id",
+    );
   });
 });
 
@@ -430,5 +471,64 @@ suite("ExecutionSql for operations", () => {
     expect(
       executionSql.createOperationTasks({ target, queries: ["SELECT 1"], disabled: true }),
     ).deep.equals([]);
+  });
+});
+
+suite("ExecutionSql default uniqueIdGenerator", () => {
+  const executionSql = new ExecutionSql(
+    { defaultDatabase: "project-id", defaultSchema: "dataset-id" },
+    "2.0.0",
+  );
+  const tableMetadata: dataform.ITableMetadata = {
+    type: dataform.TableMetadata.Type.TABLE,
+    fields: [{ name: "id", primitive: dataform.Field.Primitive.INTEGER }],
+  };
+  const baseTable: dataform.ITable = {
+    type: "incremental",
+    enumType: dataform.TableType.INCREMENTAL,
+    target: { database: "project-id", schema: "dataset-id", name: "tbl" },
+    query: "SELECT 1 AS id, TIMESTAMP '2024-01-01 00:00:00 UTC' AS ts",
+    incrementalQuery: "SELECT 2 AS id, TIMESTAMP '2024-01-02 00:00:00 UTC' AS ts",
+    incrementalStrategy: dataform.IncrementalStrategy.INSERT_OVERWRITE,
+    bigquery: { partitionBy: "DATE(ts)" },
+  };
+
+  test("generates 16-character lowercase hex temporary identifiers for onSchemaChange and staging tables", () => {
+    const table: dataform.ITable = {
+      ...baseTable,
+      onSchemaChange: dataform.OnSchemaChange.EXTEND,
+    };
+
+    const sql = executionSql
+      .publishTasks(table, { fullRefresh: false }, tableMetadata)
+      .build()[0].statement;
+
+    const emptyTempMatches = sql.match(/tbl_df_temp_[0-9a-f]{16}_empty/g);
+    const stagingMatches = sql.match(/`staging_table_temp_[0-9a-f]{16}`/g);
+
+    expect(emptyTempMatches).to.have.lengthOf(4);
+    expect(new Set(emptyTempMatches).size).to.equal(1);
+    expect(stagingMatches).to.have.lengthOf(4);
+    expect(new Set(stagingMatches).size).to.equal(1);
+
+    const emptyTempId = emptyTempMatches[0].slice("tbl_df_temp_".length, -"_empty".length);
+    const stagingId = stagingMatches[0].slice("`staging_table_temp_".length, -"`".length);
+    expect(stagingId).to.not.equal(emptyTempId);
+  });
+
+  test("generates distinct temporary identifiers across consecutive invocations", () => {
+    const firstSql = executionSql
+      .publishTasks(baseTable, { fullRefresh: false }, tableMetadata)
+      .build()[0].statement;
+    const secondSql = executionSql
+      .publishTasks(baseTable, { fullRefresh: false }, tableMetadata)
+      .build()[0].statement;
+
+    const firstId = firstSql.match(/`staging_table_temp_([0-9a-f]{16})`/)?.[1];
+    const secondId = secondSql.match(/`staging_table_temp_([0-9a-f]{16})`/)?.[1];
+
+    expect(firstId).to.match(/^[0-9a-f]{16}$/);
+    expect(secondId).to.match(/^[0-9a-f]{16}$/);
+    expect(firstId).to.not.equal(secondId);
   });
 });

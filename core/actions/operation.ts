@@ -447,16 +447,16 @@ export class Operation extends ActionBuilder<dataform.Operation> {
   private verifyConfig(
     unverifiedConfig: ILegacyOperationConfig,
   ): dataform.ActionConfig.OperationConfig {
-    // The "type" field only exists on legacy view configs. Here we convert them to the new format.
+    // The "type" field only exists on legacy operation configs.
     if (unverifiedConfig.type) {
       delete unverifiedConfig.type;
-      this.normalizeLegacyConfigDependencies(unverifiedConfig);
-      this.normalizeLegacyConfigAliases(unverifiedConfig);
-      if (unverifiedConfig.columns) {
-        unverifiedConfig.columns = ColumnDescriptors.normalizeConfigColumns(
-          unverifiedConfig.columns,
-        );
-      }
+    }
+    // Legacy field names are converted to the new format whether or not "type" is set, as it is
+    // optional in the JS API. These are no-ops for configs already in the new format.
+    this.normalizeLegacyConfigDependencies(unverifiedConfig);
+    this.normalizeLegacyConfigAliases(unverifiedConfig);
+    if (unverifiedConfig.columns) {
+      unverifiedConfig.columns = ColumnDescriptors.normalizeConfigColumns(unverifiedConfig.columns);
     }
     return verifyObjectMatchesProto(
       dataform.ActionConfig.OperationConfig,

@@ -24,7 +24,10 @@ import { retry } from "df/common/promises";
 import { dataform } from "df/protos/ts";
 
 const CLOUD_PLATFORM_SCOPE = "https://www.googleapis.com/auth/cloud-platform";
-const EXTRA_GOOGLE_SCOPES = ["https://www.googleapis.com/auth/drive"];
+// Needed to query BigQuery external tables backed by Google Drive.
+export const BIGQUERY_EXTRA_SCOPES: readonly string[] = [
+  "https://www.googleapis.com/auth/drive.readonly",
+];
 
 const BIGQUERY_DATE_RELATED_FIELDS = [
   "BigQueryDate",
@@ -76,31 +79,36 @@ export class DeferredAuthClient extends AuthClient {
 export function createImpersonatedClient(
   targetPrincipal: string,
   sourceClient: AuthClient,
+  extraScopes: readonly string[] = [],
 ): Impersonated {
   return new Impersonated({
     sourceClient,
     targetPrincipal,
-    targetScopes: [CLOUD_PLATFORM_SCOPE, ...EXTRA_GOOGLE_SCOPES],
+    targetScopes: [CLOUD_PLATFORM_SCOPE, ...extraScopes],
   });
 }
 
 /**
  * Returns a client that impersonates `credentials.impersonateServiceAccount`, or undefined if it
- * isn't set. The service account key in `credentials.credentials`, or Application Default
- * Credentials if it's empty, is used as the source credentials.
+ * isn't set. `sourceClient`, the service account key in `credentials.credentials`, or Application
+ * Default Credentials if both are empty, is used as the source credentials.
  */
-export function createAuthClient(credentials: dataform.IBigQuery): AuthClient | undefined {
+export function createAuthClient(
+  credentials: dataform.IBigQuery,
+  extraScopes: readonly string[] = [],
+  sourceClient?: AuthClient,
+): AuthClient | undefined {
   if (!credentials.impersonateServiceAccount) {
     return undefined;
   }
-  const sourceAuth = new GoogleAuth({
-    credentials: credentials.credentials && JSON.parse(credentials.credentials),
-    scopes: [CLOUD_PLATFORM_SCOPE],
-  });
-  return createImpersonatedClient(
-    credentials.impersonateServiceAccount,
-    new DeferredAuthClient(() => sourceAuth.getClient()),
-  );
+  if (!sourceClient) {
+    const sourceAuth = new GoogleAuth({
+      credentials: credentials.credentials && JSON.parse(credentials.credentials),
+      scopes: [CLOUD_PLATFORM_SCOPE],
+    });
+    sourceClient = new DeferredAuthClient(() => sourceAuth.getClient());
+  }
+  return createImpersonatedClient(credentials.impersonateServiceAccount, sourceClient, extraScopes);
 }
 
 /**
@@ -115,7 +123,7 @@ export function getBigQueryClientOptions(
 ): BigQueryOptions {
   return {
     projectId: projectId || credentials.projectId,
-    scopes: EXTRA_GOOGLE_SCOPES,
+    scopes: [...BIGQUERY_EXTRA_SCOPES],
     // Unset proto string fields read as "", which BigQuery rejects as a job location. Pass
     // undefined instead so that BigQuery auto-selects the location.
     location: credentials.location || undefined,
@@ -127,10 +135,11 @@ export function getBigQueryClientOptions(
 
 export function createBigQueryClientProvider(
   credentials: dataform.IBigQuery,
+  sourceClient?: AuthClient,
 ): BigQueryClientProvider {
   const clients = new Map<string, BigQuery>();
   // Shared by the clients of all projects, so that they reuse the same impersonated token.
-  const authClient = createAuthClient(credentials);
+  const authClient = createAuthClient(credentials, BIGQUERY_EXTRA_SCOPES, sourceClient);
   return (projectId?: string) => {
     projectId = projectId || credentials.projectId;
     if (!clients.has(projectId)) {
@@ -144,7 +153,6 @@ export function createBigQueryClientProvider(
 }
 
 export class BigQueryDbAdapter implements IDbAdapter {
-  private bigQueryCredentials: dataform.IBigQuery;
   private pool: PromisePoolExecutor;
   private clientProvider: BigQueryClientProvider;
 
@@ -155,7 +163,6 @@ export class BigQueryDbAdapter implements IDbAdapter {
       clientProvider?: BigQueryClientProvider;
     },
   ) {
-    this.bigQueryCredentials = credentials;
     this.clientProvider = options?.clientProvider || createBigQueryClientProvider(credentials);
 
     // Bigquery allows 50 concurrent queries, and a rate limit of 100/user/second by default.
@@ -217,8 +224,9 @@ export class BigQueryDbAdapter implements IDbAdapter {
     options: {
       params?: { [name: string]: any };
       rowLimit?: number;
+      maximumBytesBilled?: number;
       bigquery?: IBigQueryExecutionOptions;
-    } = { rowLimit: 1000 },
+    } = {},
   ): Promise<IExecutionResultRaw> {
     if (!statement) {
       throw new Error("Query string cannot be empty");
@@ -226,20 +234,60 @@ export class BigQueryDbAdapter implements IDbAdapter {
     return this.pool
       .addSingleTask({
         generator: async () => {
-          const [rows, , apiResponse] = await this.getClient().query({
+          const query = {
             ...this.prepareQueryOptions(
               statement,
               options.rowLimit,
               options.bigquery,
               options.params,
             ),
+            maximumBytesBilled:
+              options.maximumBytesBilled !== undefined
+                ? String(options.maximumBytesBilled)
+                : undefined,
             skipParsing: true,
-          } as any);
-          const schema = apiResponse?.schema?.fields?.map((field: any) => convertField(field));
+          };
+          // A dry run returns no rows and its result has no next page to follow, so the row limit
+          // only applies to a real run.
+          const { rows, schemaFields } =
+            options.rowLimit && !options.bigquery?.dryRun
+              ? await this.queryRawRowsUpToLimit(query, options.rowLimit)
+              : await this.queryAllRawRows(query);
+          const schema = schemaFields?.map((field: any) => convertField(field));
           return { rows, schema, metadata: {} };
         },
       })
       .promise();
+  }
+
+  private async queryAllRawRows(query: object) {
+    const [rows, , apiResponse] = await this.getClient().query(query as any);
+    return { rows, schemaFields: apiResponse?.schema?.fields };
+  }
+
+  /**
+   * Returns at most rowLimit rows of a query.
+   *
+   * The client uses maxResults in the query only as a page size and then fetches every page.
+   * Passing maxResults as an option makes it return a single page instead. That page is empty
+   * while the query is still running and can hold fewer than rowLimit rows when the rows are
+   * large, so the next pages are requested until the limit is reached or no page is left.
+   */
+  private async queryRawRowsUpToLimit(query: object, rowLimit: number) {
+    let [pageRows, nextPage, apiResponse]: any[] = await this.getClient().query(query as any, {
+      maxResults: rowLimit,
+    });
+    let rows: any[] = pageRows;
+    let schemaFields = apiResponse?.schema?.fields;
+    while (nextPage && rows.length < rowLimit) {
+      [pageRows, nextPage, apiResponse] = await nextPage.job.getQueryResults({
+        ...nextPage,
+        maxResults: rowLimit - rows.length,
+      });
+      rows = rows.concat(pageRows);
+      schemaFields = schemaFields ?? apiResponse?.schema?.fields;
+    }
+    return { rows: rows.slice(0, rowLimit), schemaFields };
   }
 
   public async evaluate(queryOrAction: QueryOrAction) {
@@ -309,37 +357,6 @@ export class BigQueryDbAdapter implements IDbAdapter {
     );
 
     return tablesMetadata;
-  }
-
-  public async search(
-    searchText: string,
-    options: { limit: number; location?: string } = { limit: 1000 },
-  ): Promise<dataform.ITableMetadata[]> {
-    const location = options.location || this.bigQueryCredentials.location || "US";
-    const results = await this.execute(
-      `select table_catalog, table_schema, table_name
-       from region-${location}.INFORMATION_SCHEMA.COLUMN_FIELD_PATHS
-       where regexp_contains(table_schema, @searchText) or regexp_contains(table_name, @searchText) or regexp_contains(field_path, @searchText)
-       group by 1, 2, 3`,
-      {
-        params: {
-          searchText: `(?i)${searchText}`,
-        },
-        interactive: true,
-        rowLimit: options.limit,
-        bigquery: { location },
-      },
-    );
-    const tables = await Promise.all(
-      results.rows.map((row) =>
-        this.table({
-          database: row.table_catalog,
-          schema: row.table_schema,
-          name: row.table_name,
-        }),
-      ),
-    );
-    return tables.filter((table) => Boolean(table));
   }
 
   public async table(target: dataform.ITarget): Promise<dataform.ITableMetadata> {

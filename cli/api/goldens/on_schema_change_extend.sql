@@ -1,5 +1,3 @@
-CREATE OR REPLACE PROCEDURE `project-id.dataset-id.df_osc_test_uuid`()
-OPTIONS(strict_mode=false)
 BEGIN
 
 -- Declare variables for schema comparison and strategy execution.
@@ -47,7 +45,7 @@ DROP TABLE IF EXISTS `project-id.dataset-id.incremental_on_schema_change_df_temp
     
 
 
--- Apply schema change strategy (EXTEND).
+-- Validate schema change strategy (EXTEND).
 IF ARRAY_LENGTH(dataform_columns_removed) > 0 THEN
   RAISE USING MESSAGE = FORMAT(
     "Column removals are not allowed when on_schema_change = 'EXTEND'. Removed columns: %T",
@@ -55,26 +53,25 @@ IF ARRAY_LENGTH(dataform_columns_removed) > 0 THEN
   );
 END IF;
 
+CREATE OR REPLACE TEMP TABLE `staging_table_temp_test_uuid` AS (
+  select 1 as id, 'a' as field1, 'new' as field2
+);
+
+-- Apply schema changes (EXTEND).
 IF ARRAY_LENGTH(dataform_columns_added) > 0 THEN
   EXECUTE IMMEDIATE (
     "ALTER TABLE `project-id.dataset-id.incremental_on_schema_change` " ||
     (
-      SELECT STRING_AGG(FORMAT("ADD COLUMN IF NOT EXISTS %s %s", column_info.column_name, column_info.data_type), ", ")
+      SELECT STRING_AGG(FORMAT("ADD COLUMN IF NOT EXISTS `%s` %s", column_info.column_name, column_info.data_type), ", ")
       FROM UNNEST(dataform_columns_added) AS column_info
     )
   );
 END IF;
 
-
-
 -- Prepare dynamic column lists for DML.
 SET dataform_columns_list = (
   SELECT STRING_AGG(FORMAT("`%s`", column_info.column_name), ", ")
   FROM UNNEST(dataform_temp_table_columns) AS column_info
-);
-
-CREATE OR REPLACE TEMP TABLE `staging_table_temp_test_uuid` AS (
-  select 1 as id, 'a' as field1, 'new' as field2
 );
 
 EXECUTE IMMEDIATE ("""	
@@ -85,12 +82,7 @@ from `staging_table_temp_test_uuid`""");
 
 -- Cleanup staging table
 DROP TABLE IF EXISTS `staging_table_temp_test_uuid`;
-END;
-BEGIN
-  CALL `project-id.dataset-id.df_osc_test_uuid`();
 EXCEPTION WHEN ERROR THEN
   DROP TABLE IF EXISTS `project-id.dataset-id.incremental_on_schema_change_df_temp_test_uuid_empty`;
-  DROP PROCEDURE IF EXISTS `project-id.dataset-id.df_osc_test_uuid`;
   RAISE;
 END;
-DROP PROCEDURE IF EXISTS `project-id.dataset-id.df_osc_test_uuid`;

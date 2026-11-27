@@ -437,6 +437,11 @@ actions:
         queries: [" SELECT 2"],
       },
     ]);
+    expect(asPlainObject(result.compile.compiledGraph.targets)).deep.equals([
+      { name: "pre_staged" },
+      { name: "pre_js_op" },
+      { database: "opProject_db", name: "pre_sqlx_op" },
+    ]);
   });
 
   test("fails when schema() is called in a non-output operation without a dataset", () => {
@@ -610,5 +615,161 @@ publish("b", "SELECT 1;");`,
       "Semi-colons are not allowed at the end of SQL statements.",
       "Semi-colons are not allowed at the end of SQL statements.",
     ]);
+  });
+
+  suite("compiledGraph targets", () => {
+    test("applies schemaSuffix, databaseSuffix, and tablePrefix to non-declaration targets", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      writeWorkflowSettingsFile(
+        projectDir,
+        `
+defaultProject: defaultProject
+defaultDataset: defaultDataset
+defaultAssertionDataset: defaultAssertions
+defaultLocation: US
+`,
+      );
+      writeDefinitionFile(
+        projectDir,
+        "source.sqlx",
+        `config { type: "declaration", name: "ext_source" }`,
+      );
+      writeDefinitionFile(
+        projectDir,
+        "tbl.sqlx",
+        `config { type: "table", assertions: { nonNull: ["id"] } }\nSELECT 1 AS id`,
+      );
+      writeDefinitionFile(
+        projectDir,
+        "op.sqlx",
+        `config { type: "operations", hasOutput: true }\nSELECT 1`,
+      );
+      writeDefinitionFile(
+        projectDir,
+        "lakehouse_tbl.sqlx",
+        `config { type: "table", lakehouse: { catalog: "my_catalog", namespace: "my_namespace" } }\nSELECT 1 AS id`,
+      );
+      writeDefinitionFile(
+        projectDir,
+        "graph.yaml",
+        `
+version: 0.2.0.dev0/google
+semantic_model:
+- name: MyGraph
+  entities:
+  - name: Item
+    source:
+      ref: tbl
+    primary_key:
+    - id
+`,
+      );
+
+      const result = runMainInVm(
+        coreExecutionRequestFromPath(
+          projectDir,
+          dataform.ProjectConfig.create({
+            databaseSuffix: "db",
+            schemaSuffix: "ds",
+            tablePrefix: "pre",
+          }),
+        ),
+      );
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.targets)).deep.equals([
+        {
+          database: "defaultProject_db",
+          schema: "my_catalog.my_namespace",
+          name: "pre_lakehouse_tbl",
+        },
+        {
+          database: "defaultProject_db",
+          schema: "defaultDataset_ds",
+          name: "pre_tbl",
+        },
+        {
+          database: "defaultProject_db",
+          schema: "defaultAssertions_ds",
+          name: "pre_defaultDataset_tbl_assertions_rowConditions",
+        },
+        {
+          database: "defaultProject_db",
+          schema: "defaultDataset_ds",
+          name: "pre_op",
+        },
+        {
+          database: "defaultProject",
+          schema: "defaultDataset",
+          name: "ext_source",
+        },
+        {
+          database: "defaultProject_db",
+          schema: "defaultDataset_ds",
+          name: "pre_MyGraph",
+        },
+      ]);
+    });
+
+    test("omits actions removed for duplicate canonical targets", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      writeWorkflowSettingsFile(projectDir, VALID_WORKFLOW_SETTINGS_YAML);
+      writeDefinitionFile(
+        projectDir,
+        "actions.js",
+        `
+declare({ name: "shared" });
+publish("shared", { type: "table" }).query("SELECT 1");
+`,
+      );
+
+      const result = runMainInVm(
+        coreExecutionRequestFromPath(
+          projectDir,
+          dataform.ProjectConfig.create({
+            schemaSuffix: "dev",
+          }),
+        ),
+      );
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).equals(2);
+      expect(asPlainObject(result.compile.compiledGraph.targets)).deep.equals([]);
+    });
+
+    test("applies suffixes and prefixes to test targets", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      writeWorkflowSettingsFile(projectDir, VALID_WORKFLOW_SETTINGS_YAML);
+      writeDefinitionFile(projectDir, "tbl.sqlx", `config { type: "table" }\nSELECT 1 AS id`);
+      writeDefinitionFile(
+        projectDir,
+        "tbl_test.sqlx",
+        `config { type: "test", dataset: "tbl" }\nSELECT 1 AS id`,
+      );
+
+      const result = runMainInVm(
+        coreExecutionRequestFromPath(
+          projectDir,
+          dataform.ProjectConfig.create({
+            databaseSuffix: "db",
+            schemaSuffix: "dev",
+            tablePrefix: "pre",
+          }),
+        ),
+      );
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.targets)).deep.equals([
+        {
+          database: "defaultProject_db",
+          schema: "defaultDataset_dev",
+          name: "pre_tbl",
+        },
+        {
+          database: "defaultProject_db",
+          schema: "defaultDataset_dev",
+          name: "pre_tbl_test",
+        },
+      ]);
+    });
   });
 });

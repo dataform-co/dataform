@@ -161,12 +161,16 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
     config?: dataform.ActionConfig.DataPreparationConfig,
   ) {
     const defaultTarget = dataform.Target.create({ name: config.name });
-    this.proto.target = this.finalizeTarget(
-      this.applySessionToTarget(defaultTarget, session.projectConfig, config.filename, {
+    const resolvedTarget = this.applySessionToTarget(
+      defaultTarget,
+      session.projectConfig,
+      config.filename,
+      {
         validateTarget: true,
-      }),
+      },
     );
-    this.proto.targets = [this.proto.target];
+    this.proto.target = resolvedTarget;
+    this.proto.targets = [this.finalizeTarget(resolvedTarget)];
     this.proto.canonicalTarget = this.applySessionToTarget(
       defaultTarget,
       session.canonicalProjectConfig,
@@ -361,16 +365,15 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
     );
 
     // Resolve targets
-    this.proto.targets = targets
-      .map((target) =>
-        this.applySessionToTarget(target, session.projectConfig, config.filename, {
-          validateTarget: true,
-        }),
-      )
-      .map((target) => this.finalizeTarget(target));
+    const resolvedTargets = targets.map((target) =>
+      this.applySessionToTarget(target, session.projectConfig, config.filename, {
+        validateTarget: true,
+      }),
+    );
+    this.proto.targets = resolvedTargets.map((target) => this.finalizeTarget(target));
 
     // Add target and error table to proto
-    this.proto.target = this.proto.targets[0];
+    this.proto.target = resolvedTargets[0];
     if (this.proto.targets.length > 1) {
       this.proto.errorTable = this.proto.targets[1];
     }

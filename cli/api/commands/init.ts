@@ -71,6 +71,9 @@ export async function init(
   if (projectConfig.defaultIcebergConfig) {
     workflowSettings.defaultIcebergConfig = projectConfig.defaultIcebergConfig;
   }
+  if (projectConfig.defaultLakehouseConfig) {
+    workflowSettings.defaultLakehouseConfig = projectConfig.defaultLakehouseConfig;
+  }
 
   fs.writeFileSync(workflowSettingsYamlPath, dumpYaml(workflowSettings));
   filesWritten.push(workflowSettingsYamlPath);

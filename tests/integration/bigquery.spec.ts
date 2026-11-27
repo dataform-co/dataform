@@ -3,46 +3,15 @@ import { expect } from "chai";
 import * as dfapi from "df/cli/api";
 import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
 import { ExecutionSql } from "df/cli/api/dbadapters/execution_sql";
-import {
-  CREDENTIALS_PATH,
-  INTEGRATION_TEST_LOCATION,
-  INTEGRATION_TEST_PROJECT,
-} from "df/cli/index_test_base";
+import { CREDENTIALS_PATH } from "df/cli/index_test_base";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
-import { dropDatasets, dropStaleDatasets, makeUniqueSuffix } from "df/testing/bigquery";
 import { integrationSuite } from "df/testing/credentials";
-import { compile, datasetsOf } from "df/tests/integration/utils";
+import { compile } from "df/tests/integration/utils";
 
-const SEARCH_SCHEMA_SUFFIX = "search";
-const SEARCH_DATASET = `df_integration_test_${SEARCH_SCHEMA_SUFFIX}`;
-
-integrationSuite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) => {
+integrationSuite("@dataform/integration/bigquery", { parallel: true }, () => {
   const credentials = dfapi.credentials.read(CREDENTIALS_PATH);
   const dbadapter = new BigQueryDbAdapter(credentials);
-  const uniqueSuffix = makeUniqueSuffix();
-
-  // The datasets created by the tests, without the unique suffix.
-  let datasets: string[];
-
-  before("drop stale datasets", async () => {
-    datasets = datasetsOf(
-      await compile("tests/integration/bigquery_project", SEARCH_SCHEMA_SUFFIX),
-    );
-    await dropStaleDatasets(dbadapter, {
-      project: INTEGRATION_TEST_PROJECT,
-      location: INTEGRATION_TEST_LOCATION,
-      prefixes: datasets,
-    });
-  });
-
-  after("drop datasets", async () => {
-    await dropDatasets(
-      dbadapter,
-      INTEGRATION_TEST_PROJECT,
-      datasets.map((dataset) => `${dataset}_${uniqueSuffix}`),
-    );
-  });
 
   test("run unit tests", async () => {
     const compiledGraph = await compile("tests/integration/bigquery_project", "unit_tests");
@@ -116,43 +85,31 @@ integrationSuite("@dataform/integration/bigquery", { parallel: true }, ({ before
     });
   });
 
-  test("search", async () => {
-    const compiledGraph = await compile(
-      "tests/integration/bigquery_project",
-      `${SEARCH_SCHEMA_SUFFIX}_${uniqueSuffix}`,
-    );
-    const dataset = `${SEARCH_DATASET}_${uniqueSuffix}`;
+  suite("executeRaw", { parallel: true }, () => {
+    const fiveRowsQuery = "SELECT x FROM UNNEST(GENERATE_ARRAY(1, 5)) AS x ORDER BY x";
+    const rowValues = (rows: any[]) => rows.map((row) => row.f[0].v);
 
-    // Run the project.
-    const executionGraph = await dfapi.build(
-      compiledGraph,
-      {
-        actions: ["example_view"],
-        includeDependencies: true,
-      },
-      dbadapter,
-    );
-    const runResult = await dfapi.run(dbadapter, executionGraph).result();
-    expect(dataform.RunResult.ExecutionStatus[runResult.status]).eql(
-      dataform.RunResult.ExecutionStatus[dataform.RunResult.ExecutionStatus.SUCCESSFUL],
-    );
+    test("returns at most rowLimit rows together with the schema", async () => {
+      const result = await dbadapter.executeRaw(fiveRowsQuery, { rowLimit: 2 });
 
-    const [fullSearch, partialSearch, columnSearch] = await Promise.all([
-      dbadapter.search(dataset),
-      // A partial match, that still only matches this run's dataset.
-      dbadapter.search(`test_search_${uniqueSuffix}`),
-      dbadapter.search("val"),
-    ]);
+      expect(rowValues(result.rows)).eql(["1", "2"]);
+      expect(result.schema.map((field) => field.name)).eql(["x"]);
+    });
 
-    // Only count tables in this test's own schema: other runs may leave behind datasets with
-    // similar names (e.g. with a per-run suffix) that also match the search text.
-    const testSchema = compiledGraph.tables.find((table) => table.target.name === "example_view")
-      .target.schema;
-    const inTestSchema = (results: dataform.ITableMetadata[]) =>
-      results.filter((result) => result.target.schema === testSchema);
+    test("returns rowLimit rows when they do not fit in the first page", async () => {
+      // Each row is about 1 MB and a page holds about 10 MB.
+      const largeRowsQuery =
+        "SELECT x, REPEAT('x', 1000000) AS s FROM UNNEST(GENERATE_ARRAY(1, 15)) AS x ORDER BY x";
 
-    expect(inTestSchema(fullSearch).length).equals(2);
-    expect(inTestSchema(partialSearch).length).equals(2);
-    expect(columnSearch.length).greaterThan(0);
+      const result = await dbadapter.executeRaw(largeRowsQuery, { rowLimit: 12 });
+
+      expect(rowValues(result.rows)).eql(Array.from({ length: 12 }, (_, i) => String(i + 1)));
+    });
+
+    test("returns all rows when rowLimit is unset", async () => {
+      const result = await dbadapter.executeRaw(fiveRowsQuery);
+
+      expect(rowValues(result.rows)).eql(["1", "2", "3", "4", "5"]);
+    });
   });
 });

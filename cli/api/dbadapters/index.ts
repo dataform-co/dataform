@@ -38,7 +38,10 @@ export interface IDbClient {
     statement: string,
     options?: {
       params?: { [name: string]: any };
+      /** Maximum number of rows to return. All rows are returned when unset. */
       rowLimit?: number;
+      /** Maximum number of bytes the query may bill. The query fails above it. */
+      maximumBytesBilled?: number;
       bigquery?: {
         labels?: { [label: string]: string };
         location?: string;
@@ -56,10 +59,6 @@ export interface IDbAdapter extends IDbClient {
   schemas(database?: string): Promise<string[]>;
 
   tables(database: string, schema?: string): Promise<dataform.ITableMetadata[]>;
-  search(
-    searchText: string,
-    options?: { limit: number; location?: string },
-  ): Promise<dataform.ITableMetadata[]>;
   table(target: dataform.ITarget): Promise<dataform.ITableMetadata>;
   deleteTable(target: dataform.ITarget): Promise<void>;
 
