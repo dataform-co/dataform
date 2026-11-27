@@ -441,11 +441,12 @@ END IF;`;
     qualifiedTargetTableName: string,
   ): string | undefined {
     const onSchemaChange = table.onSchemaChange || dataform.OnSchemaChange.IGNORE;
+    const comment = `-- Apply schema changes (${dataform.OnSchemaChange[onSchemaChange]}).`;
     switch (onSchemaChange) {
       case dataform.OnSchemaChange.EXTEND:
-        return `-- Apply schema changes (EXTEND).\n${this.alterTableAddColumnsSql(qualifiedTargetTableName)}`;
+        return `${comment}\n${this.alterTableAddColumnsSql(qualifiedTargetTableName)}`;
       case dataform.OnSchemaChange.SYNCHRONIZE:
-        return `-- Apply schema changes (SYNCHRONIZE).
+        return `${comment}
 IF ARRAY_LENGTH(dataform_columns_removed) > 0 THEN
   EXECUTE IMMEDIATE (
     "ALTER TABLE ${qualifiedTargetTableName} " ||
@@ -531,10 +532,16 @@ DROP TABLE IF EXISTS ${emptyTempTableName};
     const query = this.getIncrementalQuery(table);
     const coreBody = [
       this.declareSchemaChangeVariablesSql(table),
+      // Create a throwaway empty table to validate the new schema
       this.createEmptyTempTableSql(emptyTempTableName, query),
       this.compareSchemasSql(table.target, emptyTempTableTarget),
       this.cleanupSql(emptyTempTableName),
+      // Check that the new schema is permitted under the onSchemaChange policy
       this.validateSchemaChangeStrategySql(table, qualifiedTargetTableName),
+      // Before altering the real table, build a staging table containing the new rows
+      // Any runtime failures in the SELECT statement will prevent the script from
+      // proceeding with the schema change
+      // If the insert/merge operation itself fails, the schema change will remain applied
       this.withTempStagingTable(query, (stagingTable) =>
         [
           this.applySchemaChangesSql(table, qualifiedTargetTableName),
