@@ -90,6 +90,7 @@ suite("@dataform/api/run", () => {
         tasks: [
           {
             status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL,
+            compiledSql: "SELECT foo FROM bar",
             metadata: {
               bigquery: {
                 jobId: "abc",
@@ -100,6 +101,7 @@ suite("@dataform/api/run", () => {
           },
           {
             status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL,
+            compiledSql: "SELECT 42",
             metadata: {},
           },
         ],
@@ -110,6 +112,7 @@ suite("@dataform/api/run", () => {
         tasks: [
           {
             status: dataform.TaskResult.ExecutionStatus.FAILED,
+            compiledSql: "SELECT bar FROM baz",
             metadata: {},
             errorMessage: "bigquery error: bad statement",
           },
@@ -328,6 +331,7 @@ suite("@dataform/api/run", () => {
               tasks: [
                 {
                   status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL,
+                  compiledSql: "SELECT bar FROM baz",
                   metadata: {},
                 },
               ],
@@ -928,6 +932,7 @@ suite("@dataform/api/run", () => {
           },
           tasks: [
             {
+              compiledSql: "some statement",
               errorMessage: "Error setting metadata: Error during setMetadata",
               metadata: {},
               status: "FAILED",
