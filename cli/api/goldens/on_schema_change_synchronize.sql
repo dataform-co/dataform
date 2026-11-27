@@ -47,7 +47,7 @@ DROP TABLE IF EXISTS `project-id.dataset-id.incremental_on_schema_change_df_temp
     
 
 
--- Apply schema change strategy (SYNCHRONIZE).
+-- Validate schema change strategy (SYNCHRONIZE).
 SET dataform_invalid_removed_columns = (
   SELECT IFNULL(ARRAY_AGG(col), []) FROM UNNEST(dataform_columns_removed) AS col WHERE LOWER(col) IN UNNEST(["id"])
 );
@@ -59,6 +59,11 @@ IF ARRAY_LENGTH(dataform_invalid_removed_columns) > 0 THEN
   );
 END IF;
 
+CREATE OR REPLACE TEMP TABLE `staging_table_temp_test_uuid` AS (
+  select 1 as id, 'a' as field1, 'new' as field2
+);
+
+-- Apply schema changes (SYNCHRONIZE).
 IF ARRAY_LENGTH(dataform_columns_removed) > 0 THEN
   EXECUTE IMMEDIATE (
     "ALTER TABLE `project-id.dataset-id.incremental_on_schema_change` " ||
@@ -79,8 +84,6 @@ IF ARRAY_LENGTH(dataform_columns_added) > 0 THEN
   );
 END IF;
 
-
-
 -- Prepare dynamic column lists for DML.
 SET dataform_columns_list = (
   SELECT STRING_AGG(FORMAT("`%s`", column_info.column_name), ", ")
@@ -89,10 +92,6 @@ SET dataform_columns_list = (
 SET dataform_columns_merge = (
   SELECT STRING_AGG(FORMAT("`%s` = DATAFORM_SOURCE.`%s`", column_info.column_name, column_info.column_name), ", ")
   FROM UNNEST(dataform_temp_table_columns) AS column_info
-);
-
-CREATE OR REPLACE TEMP TABLE `staging_table_temp_test_uuid` AS (
-  select 1 as id, 'a' as field1, 'new' as field2
 );
 
 EXECUTE IMMEDIATE ("""
