@@ -32,6 +32,15 @@ test("name")
 publish("sample_data", { type: "table" }).query("SELECT 1 AS bar")
 ```
 
+Tests can target `table`, `view` and `incremental` datasets. For an `incremental` dataset, the test
+runs its query with `incremental()` set to `false`, which is the full-refresh `SELECT`; the
+incremental branch, the `incremental_where` predicate and the insert/merge aren't tested. Refs in
+either argument of `when(incremental(), ...)` still need an `input`, because JavaScript evaluates
+both arguments.
+
+In any test, pre/post operations aren't run and `self()`, `name()`, `schema()` and `database()`
+return empty strings. Datasets that use JiT compilation, or that define no query, can't be tested.
+
 Note: When using the Javascript API, methods in this class can be accessed by the returned value.
 This is where `input` and `expect` come from.
 

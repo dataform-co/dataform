@@ -336,6 +336,8 @@ config {
 
 Validates the SQL logic of a target `dataset` (`table`, `view`, or `incremental` action) by replacing its upstream `ref()` inputs with static mock queries (`input "<ref_name>" { ... }`) and comparing the output against an expected query. Executed via `dataform test` or `dataform run --run-tests`.
 
+For an `incremental` dataset, the test runs its query with `incremental()` set to `false`, which is the full-refresh `SELECT`; the incremental branch, the `incremental_where` predicate and the insert/merge aren't tested. Refs in either argument of `when(incremental(), ...)` still need an `input`, because JavaScript evaluates both arguments. In any test, pre/post operations aren't run and `self()`, `name()`, `schema()` and `database()` return empty strings. Datasets that use JiT compilation, or that define no query, can't be tested.
+
 ```sql
 -- definitions/tests/orders_by_day_test.sqlx
 config {

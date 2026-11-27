@@ -956,10 +956,14 @@ export class Session {
       .forEach((currentTest) => {
         const testTargets = this.indexedActions.find(currentTest.getTestTarget());
         testTargets.forEach((action) => {
-          if (!(action instanceof Table || action instanceof View)) {
+          if (!(
+            action instanceof Table ||
+            action instanceof View ||
+            action instanceof IncrementalTable
+          )) {
             this.compileError(
               new Error(
-                `Tests are only supported for Tables and Views. Action "${targetAsReadableString(action.getTarget())}" is not a table or view".`,
+                `Tests are only supported for tables, views and incremental tables. Action "${targetAsReadableString(action.getTarget())}" is not one of these.`,
               ),
               action.getFileName(),
               action.getTarget(),
@@ -967,9 +971,9 @@ export class Session {
           }
         });
         testTargets
-          .map((action) => action as Table | View)
-          .forEach((tableOrViewAction) =>
-            tableOrViewAction.dependencies(utils.resolvableAsTarget(currentTest.getTarget())),
+          .map((action) => action as Table | View | IncrementalTable)
+          .forEach((datasetAction) =>
+            datasetAction.dependencies(utils.resolvableAsTarget(currentTest.getTarget())),
           );
       });
   }
