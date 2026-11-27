@@ -503,15 +503,17 @@ suite("ExecutionSql default uniqueIdGenerator", () => {
       .publishTasks(table, { fullRefresh: false }, tableMetadata)
       .build()[0].statement;
 
-    const procedureMatch = sql.match(/`project-id\.dataset-id\.df_osc_([0-9a-f]{16})`/);
-    const emptyTempMatch = sql.match(/`project-id\.dataset-id\.tbl_df_temp_([0-9a-f]{16})_empty`/);
-    const stagingMatch = sql.match(/`staging_table_temp_([0-9a-f]{16})`/);
+    const emptyTempMatches = sql.match(/tbl_df_temp_[0-9a-f]{16}_empty/g);
+    const stagingMatches = sql.match(/`staging_table_temp_[0-9a-f]{16}`/g);
 
-    expect(procedureMatch).to.not.equal(null);
-    expect(emptyTempMatch).to.not.equal(null);
-    expect(stagingMatch).to.not.equal(null);
-    expect(procedureMatch[1]).to.equal(emptyTempMatch[1]);
-    expect(stagingMatch[1]).to.not.equal(procedureMatch[1]);
+    expect(emptyTempMatches).to.have.lengthOf(4);
+    expect(new Set(emptyTempMatches).size).to.equal(1);
+    expect(stagingMatches).to.have.lengthOf(4);
+    expect(new Set(stagingMatches).size).to.equal(1);
+
+    const emptyTempId = emptyTempMatches[0].slice("tbl_df_temp_".length, -"_empty".length);
+    const stagingId = stagingMatches[0].slice("`staging_table_temp_".length, -"`".length);
+    expect(stagingId).to.not.equal(emptyTempId);
   });
 
   test("generates distinct temporary identifiers across consecutive invocations", () => {
