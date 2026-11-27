@@ -137,6 +137,8 @@ export class View extends ActionBuilder<dataform.Table> {
     const target = actionConfigToCompiledGraphTarget(config);
     this.proto.target = this.applySessionToTarget(target, session.projectConfig, config.filename, {
       validateTarget: true,
+      // `project` and `dataset` are validated by `.database()` and `.schema()` below.
+      validateFields: ["name"],
     });
     this.proto.canonicalTarget = this.applySessionToTarget(target, session.canonicalProjectConfig);
 
@@ -445,7 +447,7 @@ export class View extends ActionBuilder<dataform.Table> {
       dataform.Target.create({ ...this.proto.target, database }),
       this.session.projectConfig,
       this.proto.fileName,
-      { validateTarget: true },
+      { validateTarget: true, validateFields: ["database"] },
     );
     this.updateInlineAssertionsDatabase(database, this.proto.target);
     return this;
@@ -467,7 +469,7 @@ export class View extends ActionBuilder<dataform.Table> {
       dataform.Target.create({ ...this.proto.target, schema }),
       this.session.projectConfig,
       this.proto.fileName,
-      { validateTarget: true },
+      { validateTarget: true, validateFields: ["schema"] },
     );
     this.updateInlineAssertionsSchema(schema, this.proto.target);
     return this;

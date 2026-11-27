@@ -116,6 +116,8 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
     const target = actionConfigToCompiledGraphTarget(config);
     this.proto.target = this.applySessionToTarget(target, session.projectConfig, config.filename, {
       validateTarget: true,
+      // `project` and `dataset` are validated by `.database()` and `.schema()` below.
+      validateFields: ["name"],
       useDefaultAssertionDataset: true,
     });
     this.proto.canonicalTarget = this.applySessionToTarget(
@@ -282,7 +284,7 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
       dataform.Target.create({ ...this.proto.target, database }),
       this.session.projectConfig,
       this.proto.fileName,
-      { validateTarget: true, useDefaultAssertionDataset: true },
+      { validateTarget: true, validateFields: ["database"], useDefaultAssertionDataset: true },
     );
     return this;
   }
@@ -299,7 +301,7 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
       dataform.Target.create({ ...this.proto.target, schema }),
       this.session.projectConfig,
       this.proto.fileName,
-      { validateTarget: true, useDefaultAssertionDataset: true },
+      { validateTarget: true, validateFields: ["schema"], useDefaultAssertionDataset: true },
     );
     return this;
   }
@@ -322,6 +324,21 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
   /** @hidden */
   public setName(name: string) {
     this.proto.target = dataform.Target.create({ ...this.proto.target, name });
+  }
+
+  /** @hidden */
+  public setDatabase(database: string) {
+    this.proto.target = dataform.Target.create({ ...this.proto.target, database });
+    this.proto.canonicalTarget = dataform.Target.create({
+      ...this.proto.canonicalTarget,
+      database,
+    });
+  }
+
+  /** @hidden */
+  public setSchema(schema: string) {
+    this.proto.target = dataform.Target.create({ ...this.proto.target, schema });
+    this.proto.canonicalTarget = dataform.Target.create({ ...this.proto.canonicalTarget, schema });
   }
 
   /** @hidden */

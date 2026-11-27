@@ -634,17 +634,7 @@ export class Session {
       this.addTestsToCompiledGraph(this.actions);
     }
 
-    // Notebooks and non-output operations are not checked: notebooks cannot set a dataset in their
-    // config, and operations without `hasOutput: true` do not materialize a target in a dataset.
-    this.checkActionTargetsHaveDataset(
-      [].concat(
-        compiledGraph.tables,
-        compiledGraph.assertions,
-        compiledGraph.operations.filter((operation) => operation.hasOutput),
-        compiledGraph.dataPreparations,
-        compiledGraph.propertyGraphs,
-      ),
-    );
+    this.checkPropertyGraphTargetsHaveDataset(compiledGraph.propertyGraphs);
 
     this.fullyQualifyDependencies(
       [].concat(
@@ -772,22 +762,19 @@ export class Session {
     return compiledChunks;
   }
 
-  private checkActionTargetsHaveDataset(actions: ActionProto[]) {
-    actions.forEach((action) => {
-      // Data preparations can have multiple outputs, all of which are listed in `targets`.
-      const dataPreparationTargets = (action as dataform.IDataPreparation).targets;
-      const targets = dataPreparationTargets?.length ? dataPreparationTargets : [action.target];
-      targets.forEach((target) => {
-        if (!target?.schema) {
-          this.compileError(
-            new Error(
-              "Action targets must have a dataset. Set defaultDataset in workflow_settings.yaml or dataset in the action config.",
-            ),
-            action.fileName,
-            target,
-          );
-        }
-      });
+  // Unlike other actions, property graphs have no fallback for a missing dataset: without one the
+  // generated `CREATE PROPERTY GRAPH` DDL is invalid.
+  private checkPropertyGraphTargetsHaveDataset(propertyGraphs: dataform.IPropertyGraph[]) {
+    propertyGraphs.forEach((propertyGraph) => {
+      if (!propertyGraph.target?.schema) {
+        this.compileError(
+          new Error(
+            "Property graph targets must have a dataset. Set defaultDataset in workflow_settings.yaml or a deployment target in the graph definition.",
+          ),
+          propertyGraph.fileName,
+          propertyGraph.target,
+        );
+      }
     });
   }
 

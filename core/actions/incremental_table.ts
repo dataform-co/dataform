@@ -138,6 +138,9 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
     );
     this.proto.target = this.applySessionToTarget(target, session.projectConfig, fileName, {
       validateTarget: true,
+      // `project` and `dataset` are validated by `.database()` and `.schema()` below, except that
+      // `.schema()` is not called for Lakehouse targets.
+      validateFields: config.lakehouse ? ["name", "schema"] : ["name"],
     });
     this.proto.canonicalTarget = this.applySessionToTarget(
       actionConfigToCompiledGraphTarget(
@@ -511,7 +514,7 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
       dataform.Target.create({ ...this.proto.target, database }),
       this.session.projectConfig,
       this.proto.fileName,
-      { validateTarget: true },
+      { validateTarget: true, validateFields: ["database"] },
     );
     this.updateInlineAssertionsDatabase(database, this.proto.target);
     return this;
@@ -541,7 +544,7 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
       dataform.Target.create({ ...this.proto.target, schema }),
       this.session.projectConfig,
       this.proto.fileName,
-      { validateTarget: true },
+      { validateTarget: true, validateFields: ["schema"] },
     );
     this.updateInlineAssertionsSchema(schema, this.proto.target);
     return this;

@@ -140,7 +140,7 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
       dataform.Target.create({ ...this.proto.target, database }),
       this.session.projectConfig,
       this.proto.fileName,
-      { validateTarget: true },
+      { validateTarget: true, validateFields: ["database"] },
     );
     return this;
   }
@@ -150,7 +150,7 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
       dataform.Target.create({ ...this.proto.target, schema }),
       this.session.projectConfig,
       this.proto.fileName,
-      { validateTarget: true },
+      { validateTarget: true, validateFields: ["schema"] },
     );
     return this;
   }

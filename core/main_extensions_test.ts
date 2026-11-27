@@ -82,10 +82,7 @@ suite("extensions interface", ({ afterEach }) => {
     writeDefinitionFile(projectDir, "e.sqlx", `config {type: "view"}`);
     writeDefinitionFile(projectDir, "file.sqlx", "${resolve('e')}");
 
-    const request = coreExecutionRequestFromPath(
-      projectDir,
-      dataform.ProjectConfig.create({ defaultSchema: "defaultDataset" }),
-    );
+    const request = coreExecutionRequestFromPath(projectDir);
     request.compile.compileConfig.extension = {
       name: "@dataform/sample-extension",
       compilationMode: dataform.ExtensionCompilationMode.APPLICATION_CODE,
@@ -102,10 +99,7 @@ suite("extensions interface", ({ afterEach }) => {
     writeDefinitionFile(projectDir, "e.sqlx", `config {type: "view"}`);
     writeDefinitionFile(projectDir, "file.sqlx", "${resolve('e')}");
 
-    const request = coreExecutionRequestFromPath(
-      projectDir,
-      dataform.ProjectConfig.create({ defaultSchema: "defaultDataset" }),
-    );
+    const request = coreExecutionRequestFromPath(projectDir);
     request.compile.compileConfig.extension = {
       name: "@dataform/sample-extension",
       compilationMode: dataform.ExtensionCompilationMode.PROLOGUE,
