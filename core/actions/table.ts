@@ -670,8 +670,7 @@ export class Table extends ActionBuilder<dataform.Table> {
     // different to the new structure.
     unverifiedConfig: dataform.ActionConfig.TableConfig | ILegacyTableConfig | any,
   ): dataform.ActionConfig.TableConfig {
-    // The "type" field only exists on legacy table configs. Here we convert them to the
-    // new format.
+    // The "type" field only exists on legacy table configs.
     if (unverifiedConfig.type) {
       if (unverifiedConfig.type !== "table") {
         throw ReferenceError(
@@ -679,49 +678,49 @@ export class Table extends ActionBuilder<dataform.Table> {
         );
       }
       delete unverifiedConfig.type;
-      this.normalizeLegacyConfigDependencies(unverifiedConfig);
-      this.normalizeLegacyConfigAliases(unverifiedConfig);
-      this.normalizeLegacyConfigInlineAssertions(unverifiedConfig);
-      if (unverifiedConfig.columns) {
-        unverifiedConfig.columns = ColumnDescriptors.normalizeConfigColumns(
-          unverifiedConfig.columns,
-        );
-      }
+    }
+    // Legacy fields are converted to the new format whether or not "type" is set. These are no-ops
+    // for configs already in the new format.
+    this.normalizeLegacyConfigDependencies(unverifiedConfig);
+    this.normalizeLegacyConfigAliases(unverifiedConfig);
+    this.normalizeLegacyConfigInlineAssertions(unverifiedConfig);
+    if (unverifiedConfig.columns) {
+      unverifiedConfig.columns = ColumnDescriptors.normalizeConfigColumns(unverifiedConfig.columns);
+    }
 
-      unverifiedConfig =
-        LegacyConfigConverter.insertLegacyInlineAssertionsToConfigProto(unverifiedConfig);
-      unverifiedConfig =
-        LegacyConfigConverter.insertLegacyBigQueryOptionsToConfigProto(unverifiedConfig);
-      if (unverifiedConfig.bigquery) {
-        checkExcessProperties(
-          (e: Error) => {
-            throw e;
-          },
-          unverifiedConfig.bigquery,
-          strictKeysOf<ILegacyBigQueryOptions>()([
-            "partitionBy",
-            "clusterBy",
-            "updatePartitionFilter",
-            "labels",
-            "partitionExpirationDays",
-            "requirePartitionFilter",
-            "additionalOptions",
-            "incrementalPredicates",
-            "iceberg",
-          ]),
-          "BigQuery table config",
+    unverifiedConfig =
+      LegacyConfigConverter.insertLegacyInlineAssertionsToConfigProto(unverifiedConfig);
+    unverifiedConfig =
+      LegacyConfigConverter.insertLegacyBigQueryOptionsToConfigProto(unverifiedConfig);
+    if (unverifiedConfig.bigquery) {
+      checkExcessProperties(
+        (e: Error) => {
+          throw e;
+        },
+        unverifiedConfig.bigquery,
+        strictKeysOf<ILegacyBigQueryOptions>()([
+          "partitionBy",
+          "clusterBy",
+          "updatePartitionFilter",
+          "labels",
+          "partitionExpirationDays",
+          "requirePartitionFilter",
+          "additionalOptions",
+          "incrementalPredicates",
+          "iceberg",
+        ]),
+        "BigQuery table config",
+      );
+    }
+    if (unverifiedConfig.iceberg) {
+      if (
+        typeof unverifiedConfig.iceberg.fileFormat === "string" &&
+        unverifiedConfig.iceberg.fileFormat &&
+        unverifiedConfig.iceberg.fileFormat.toUpperCase() !== "PARQUET"
+      ) {
+        throw new ReferenceError(
+          `Unexpected file format; only "PARQUET" is allowed, got "${unverifiedConfig.iceberg.fileFormat}".`,
         );
-      }
-      if (unverifiedConfig.iceberg) {
-        if (
-          typeof unverifiedConfig.iceberg.fileFormat === "string" &&
-          unverifiedConfig.iceberg.fileFormat &&
-          unverifiedConfig.iceberg.fileFormat.toUpperCase() !== "PARQUET"
-        ) {
-          throw new ReferenceError(
-            `Unexpected file format; only "PARQUET" is allowed, got "${unverifiedConfig.iceberg.fileFormat}".`,
-          );
-        }
       }
     }
 

@@ -67,9 +67,6 @@ class FakeDbAdapter implements IDbAdapter {
   public async tables(database: string, schema?: string): Promise<dataform.ITableMetadata[]> {
     return [];
   }
-  public async search(): Promise<dataform.ITableMetadata[]> {
-    return [];
-  }
   public async table(target: dataform.ITarget): Promise<dataform.ITableMetadata> {
     return null;
   }

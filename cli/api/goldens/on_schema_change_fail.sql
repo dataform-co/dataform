@@ -1,5 +1,3 @@
-CREATE OR REPLACE PROCEDURE `project-id.dataset-id.df_osc_test_uuid`()
-OPTIONS(strict_mode=false)
 BEGIN
 
 -- Declare variables for schema comparison and strategy execution.
@@ -47,7 +45,7 @@ DROP TABLE IF EXISTS `project-id.dataset-id.incremental_on_schema_change_df_temp
     
 
 
--- Apply schema change strategy (FAIL).
+-- Validate schema change strategy (FAIL).
 IF ARRAY_LENGTH(dataform_columns_added) > 0 OR ARRAY_LENGTH(dataform_columns_removed) > 0 THEN
   RAISE USING MESSAGE = FORMAT(
     "Schema mismatch defined by on_schema_change = 'FAIL'. Added columns: %T, removed columns: %T",
@@ -56,16 +54,14 @@ IF ARRAY_LENGTH(dataform_columns_added) > 0 OR ARRAY_LENGTH(dataform_columns_rem
   );
 END IF;
 
-
+CREATE OR REPLACE TEMP TABLE `staging_table_temp_test_uuid` AS (
+  select 1 as id, 'a' as field1, 'new' as field2
+);
 
 -- Prepare dynamic column lists for DML.
 SET dataform_columns_list = (
   SELECT STRING_AGG(FORMAT("`%s`", column_info.column_name), ", ")
   FROM UNNEST(dataform_temp_table_columns) AS column_info
-);
-
-CREATE OR REPLACE TEMP TABLE `staging_table_temp_test_uuid` AS (
-  select 1 as id, 'a' as field1, 'new' as field2
 );
 
 EXECUTE IMMEDIATE ("""	
@@ -76,12 +72,7 @@ from `staging_table_temp_test_uuid`""");
 
 -- Cleanup staging table
 DROP TABLE IF EXISTS `staging_table_temp_test_uuid`;
-END;
-BEGIN
-  CALL `project-id.dataset-id.df_osc_test_uuid`();
 EXCEPTION WHEN ERROR THEN
   DROP TABLE IF EXISTS `project-id.dataset-id.incremental_on_schema_change_df_temp_test_uuid_empty`;
-  DROP PROCEDURE IF EXISTS `project-id.dataset-id.df_osc_test_uuid`;
   RAISE;
 END;
-DROP PROCEDURE IF EXISTS `project-id.dataset-id.df_osc_test_uuid`;

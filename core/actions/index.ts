@@ -108,15 +108,7 @@ export abstract class ActionBuilder<T> {
   }
 
   public finalizeTarget(targetFromConfig: dataform.Target): dataform.Target {
-    return dataform.Target.create({
-      name: this.session.finalizeName(targetFromConfig.name),
-      schema: targetFromConfig.schema
-        ? this.session.finalizeSchema(targetFromConfig.schema)
-        : undefined,
-      database: targetFromConfig.database
-        ? this.session.finalizeDatabase(targetFromConfig.database)
-        : undefined,
-    });
+    return this.session.finalizeTarget(targetFromConfig);
   }
 
   /** Retrieves the filename from the config. */

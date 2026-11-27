@@ -615,54 +615,54 @@ export class View extends ActionBuilder<dataform.Table> {
     // different to the new structure.
     unverifiedConfig: dataform.ActionConfig.ViewConfig | ILegacyBigQueryOptions | any,
   ): dataform.ActionConfig.ViewConfig {
-    // The "type" field only exists on legacy view configs. Here we convert them to the new format.
+    // The "type" field only exists on legacy view configs.
     if (unverifiedConfig.type) {
       delete unverifiedConfig.type;
-      this.normalizeLegacyConfigDependencies(unverifiedConfig);
-      this.normalizeLegacyConfigAliases(unverifiedConfig);
-      this.normalizeLegacyConfigInlineAssertions(unverifiedConfig);
-      if (unverifiedConfig.columns) {
-        unverifiedConfig.columns = ColumnDescriptors.normalizeConfigColumns(
-          unverifiedConfig.columns,
-        );
+    }
+    // Legacy fields are converted to the new format whether or not "type" is set. These are no-ops
+    // for configs already in the new format.
+    this.normalizeLegacyConfigDependencies(unverifiedConfig);
+    this.normalizeLegacyConfigAliases(unverifiedConfig);
+    this.normalizeLegacyConfigInlineAssertions(unverifiedConfig);
+    if (unverifiedConfig.columns) {
+      unverifiedConfig.columns = ColumnDescriptors.normalizeConfigColumns(unverifiedConfig.columns);
+    }
+    unverifiedConfig =
+      LegacyConfigConverter.insertLegacyInlineAssertionsToConfigProto(unverifiedConfig);
+    if (unverifiedConfig?.bigquery) {
+      checkExcessProperties(
+        (e: Error) => {
+          throw e;
+        },
+        unverifiedConfig.bigquery,
+        strictKeysOf<ILegacyViewBigqueryConfig>()([
+          "labels",
+          "additionalOptions",
+          "partitionBy",
+          "clusterBy",
+        ]),
+        "BigQuery view config",
+      );
+      // Shallow-clone before the delete-loop below so we don't mutate a caller-shared object.
+      unverifiedConfig.bigquery = { ...unverifiedConfig.bigquery };
+      if (!!unverifiedConfig.bigquery.labels) {
+        unverifiedConfig.labels = unverifiedConfig.bigquery.labels;
+        delete unverifiedConfig.bigquery.labels;
       }
-      unverifiedConfig =
-        LegacyConfigConverter.insertLegacyInlineAssertionsToConfigProto(unverifiedConfig);
-      if (unverifiedConfig?.bigquery) {
-        checkExcessProperties(
-          (e: Error) => {
-            throw e;
-          },
-          unverifiedConfig.bigquery,
-          strictKeysOf<ILegacyViewBigqueryConfig>()([
-            "labels",
-            "additionalOptions",
-            "partitionBy",
-            "clusterBy",
-          ]),
-          "BigQuery view config",
-        );
-        // Shallow-clone before the delete-loop below so we don't mutate a caller-shared object.
-        unverifiedConfig.bigquery = { ...unverifiedConfig.bigquery };
-        if (!!unverifiedConfig.bigquery.labels) {
-          unverifiedConfig.labels = unverifiedConfig.bigquery.labels;
-          delete unverifiedConfig.bigquery.labels;
-        }
-        if (!!unverifiedConfig.bigquery.additionalOptions) {
-          unverifiedConfig.additionalOptions = unverifiedConfig.bigquery.additionalOptions;
-          delete unverifiedConfig.bigquery.additionalOptions;
-        }
-        if (!!unverifiedConfig.bigquery.partitionBy) {
-          unverifiedConfig.partitionBy = unverifiedConfig.bigquery.partitionBy;
-          delete unverifiedConfig.bigquery.partitionBy;
-        }
-        if (!!unverifiedConfig.bigquery.clusterBy) {
-          unverifiedConfig.clusterBy = unverifiedConfig.bigquery.clusterBy;
-          delete unverifiedConfig.bigquery.clusterBy;
-        }
-        if (Object.keys(unverifiedConfig.bigquery).length === 0) {
-          delete unverifiedConfig.bigquery;
-        }
+      if (!!unverifiedConfig.bigquery.additionalOptions) {
+        unverifiedConfig.additionalOptions = unverifiedConfig.bigquery.additionalOptions;
+        delete unverifiedConfig.bigquery.additionalOptions;
+      }
+      if (!!unverifiedConfig.bigquery.partitionBy) {
+        unverifiedConfig.partitionBy = unverifiedConfig.bigquery.partitionBy;
+        delete unverifiedConfig.bigquery.partitionBy;
+      }
+      if (!!unverifiedConfig.bigquery.clusterBy) {
+        unverifiedConfig.clusterBy = unverifiedConfig.bigquery.clusterBy;
+        delete unverifiedConfig.bigquery.clusterBy;
+      }
+      if (Object.keys(unverifiedConfig.bigquery).length === 0) {
+        delete unverifiedConfig.bigquery;
       }
     }
 
