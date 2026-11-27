@@ -1,3 +1,4 @@
+import * as crypto from "crypto";
 import * as semver from "semver";
 
 import { Task, Tasks } from "df/cli/api/dbadapters/tasks";
@@ -18,14 +19,17 @@ const QUOTED_TOP_LEVEL_COLUMN_REGEX = /^`([^`]+)`(?:\s*\.\s*(?:`[^`]+`|[A-Za-z_]
 const UNQUOTED_TOP_LEVEL_COLUMN_REGEX =
   /^([A-Za-z_][A-Za-z0-9_]*)(?:\s*\.\s*(?:`[^`]+`|[A-Za-z_][A-Za-z0-9_]*))*$/;
 
+function generateDefaultUniqueId(): string {
+  return crypto.randomBytes(8).toString("hex");
+}
+
 export class ExecutionSql {
   private readonly CompilationSql: CompilationSql;
 
   constructor(
     private readonly project: dataform.IProjectConfig,
     private readonly dataformCoreVersion: string,
-    private readonly uniqueIdGenerator: () => string = () =>
-      Math.random().toString(36).substring(2),
+    private readonly uniqueIdGenerator: () => string = generateDefaultUniqueId,
   ) {
     this.CompilationSql = new CompilationSql(project, dataformCoreVersion);
   }
