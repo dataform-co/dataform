@@ -10,6 +10,7 @@ ts_library(
         exclude = [
             "utils/**/*.*",
             "lineage/testing/**/*.*",
+            "testing/**/*.*",
             "**/*_test.ts",
         ],
     ),
@@ -52,6 +53,7 @@ ts_test_suite(
         "commands/prune_test.ts",
         "dbadapters/bigquery_test.ts",
         "execution_sql_test.ts",
+        "testing/fake_source_client.ts",
     ] + glob(["lineage/*_test.ts"]),
     data = glob(["goldens/**"]),
     deps = [

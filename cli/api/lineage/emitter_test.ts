@@ -9,6 +9,7 @@ import {
   LINEAGE_RETRY_CONFIG,
   LineageEmitter,
 } from "df/cli/api/lineage/emitter";
+import { FakeSourceClient } from "df/cli/api/testing/fake_source_client";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 
@@ -465,16 +466,30 @@ suite("LineageEmitter", () => {
 
   test("createLineageClientProvider impersonates the configured service account", async () => {
     const serviceAccount = "target-sa@test-project.iam.gserviceaccount.com";
+    const sourceClient = new FakeSourceClient();
     const client = createLineageClientProvider(
       dataform.BigQuery.create({
         projectId: "test-project",
         location: "US",
         impersonateServiceAccount: serviceAccount,
       }),
+      sourceClient,
     )("test-project", "datalineage.googleapis.com");
     const authClient = await client.auth.getClient();
     expect(authClient).to.be.instanceOf(Impersonated);
     expect((authClient as Impersonated).getTargetPrincipal()).to.equal(serviceAccount);
+
+    await authClient.getAccessToken();
+    expect(sourceClient.requests).to.have.lengthOf(1);
+    expect(sourceClient.requests[0]).to.deep.include({
+      method: "POST",
+      url: `https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${serviceAccount}:generateAccessToken`,
+      data: {
+        delegates: [],
+        scope: ["https://www.googleapis.com/auth/cloud-platform"],
+        lifetime: "3600s",
+      },
+    });
   });
 
   test("non-transient errors propagate without outer-loop retry", async () => {
