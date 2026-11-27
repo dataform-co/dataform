@@ -1,4 +1,6 @@
 import { expect } from "chai";
+import * as fs from "fs-extra";
+import * as path from "path";
 
 import {
   asPlainObject,
@@ -479,6 +481,217 @@ actions:
                 { path: ["profile", "email"], description: "Nested email" },
               ],
             },
+          },
+        ]),
+      );
+    });
+
+    test("ignores uppercase extensions during workspace auto-discovery", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      writeWorkflowSettingsFile(projectDir, VALID_WORKFLOW_SETTINGS_YAML);
+      fs.ensureDirSync(path.join(projectDir, "includes"));
+      fs.writeFileSync(
+        path.join(projectDir, "includes/ignored_helper.JS"),
+        "module.exports = { val: 'ignored' };\n",
+      );
+      writeDefinitionFile(projectDir, "ignored_table.SQLX", `config { type: "table" }\nSELECT 999`);
+      writeDefinitionFile(
+        projectDir,
+        "ignored_script.JS",
+        `publish("ignored_js").query("SELECT 999");`,
+      );
+      writeDefinitionFile(
+        projectDir,
+        "actions.YAML",
+        `actions:\n- table:\n    filename: ignored_from_yaml.sql\n`,
+      );
+      writeDefinitionFile(projectDir, "ignored_from_yaml.sql", "SELECT 999");
+      writeDefinitionFile(projectDir, "graph.YAML", "invalid_graph_yaml: true\n");
+      writeDefinitionFile(
+        projectDir,
+        "probe.sqlx",
+        `config { type: "view" }\nSELECT '\${typeof ignored_helper}' AS helper_type`,
+      );
+
+      // Include uppercase paths explicitly in compileConfig.filePaths (matching CLI and Cloud hosts)
+      // because coreExecutionRequestFromPath pre-filters by lowercase SOURCE_EXTENSIONS.
+      const request = coreExecutionRequestFromPath(projectDir);
+      request.compile.compileConfig.filePaths.push(
+        "includes/ignored_helper.JS",
+        "definitions/ignored_table.SQLX",
+        "definitions/ignored_script.JS",
+        "definitions/actions.YAML",
+        "definitions/graph.YAML",
+      );
+      const result = runMainInVm(request);
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(result.compile.compiledGraph.propertyGraphs).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals(
+        asPlainObject([
+          {
+            type: "view",
+            enumType: "VIEW",
+            target: {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "probe",
+            },
+            canonicalTarget: {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "probe",
+            },
+            fileName: "definitions/probe.sqlx",
+            query: "\nSELECT 'undefined' AS helper_type",
+            disabled: false,
+            hermeticity: "NON_HERMETIC",
+          },
+        ]),
+      );
+    });
+
+    test("transpiles uppercase .SQL files referenced from actions.yaml as SQL", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      writeWorkflowSettingsFile(projectDir, VALID_WORKFLOW_SETTINGS_YAML);
+      writeDefinitionFile(
+        projectDir,
+        "actions.yaml",
+        "actions:\n- table:\n    filename: upper_query.SQL\n",
+      );
+      writeDefinitionFile(
+        projectDir,
+        "upper_query.SQL",
+        `global.__upper_sql_ran_as_js = "RAN";\nSELECT 1 AS id`,
+      );
+      writeDefinitionFile(
+        projectDir,
+        "probe.sqlx",
+        `config { type: "view" }\nSELECT '\${global.__upper_sql_ran_as_js || "SAFE"}' AS status`,
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals(
+        asPlainObject([
+          {
+            type: "table",
+            enumType: "TABLE",
+            target: {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "upper_query",
+            },
+            canonicalTarget: {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "upper_query",
+            },
+            fileName: "definitions/upper_query.SQL",
+            query: `global.__upper_sql_ran_as_js = "RAN";\nSELECT 1 AS id`,
+            disabled: false,
+            hermeticity: "NON_HERMETIC",
+          },
+          {
+            type: "view",
+            enumType: "VIEW",
+            target: {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "probe",
+            },
+            canonicalTarget: {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "probe",
+            },
+            fileName: "definitions/probe.sqlx",
+            query: "\nSELECT 'SAFE' AS status",
+            disabled: false,
+            hermeticity: "NON_HERMETIC",
+          },
+        ]),
+      );
+    });
+
+    test("transpiles uppercase .IPYNB files referenced from actions.yaml as JSON", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      writeWorkflowSettingsFile(projectDir, VALID_WORKFLOW_SETTINGS_YAML);
+      writeDefinitionFile(
+        projectDir,
+        "actions.yaml",
+        "actions:\n- notebook:\n    filename: upper_nb.IPYNB\n",
+      );
+      writeDefinitionFile(
+        projectDir,
+        "upper_nb.IPYNB",
+        JSON.stringify({ cells: [], nbformat: 4, nbformat_minor: 3 }),
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.notebooks)).deep.equals(
+        asPlainObject([
+          {
+            target: {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "upper_nb",
+            },
+            canonicalTarget: {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "upper_nb",
+            },
+            fileName: "definitions/upper_nb.IPYNB",
+            notebookContents: '{"cells":[],"nbformat":4,"nbformat_minor":3}',
+          },
+        ]),
+      );
+    });
+
+    test("reads uppercase .MD files via getContents without executing JavaScript", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      writeWorkflowSettingsFile(projectDir, VALID_WORKFLOW_SETTINGS_YAML);
+      writeDefinitionFile(
+        projectDir,
+        "README.MD",
+        `global.__upper_md_ran_as_js = "RAN";\n# Uppercase docs`,
+      );
+      writeDefinitionFile(
+        projectDir,
+        "with_md.sqlx",
+        `config { type: "view", description: \`\${getContents("README.MD")}\` }\n` +
+          `SELECT '\${global.__upper_md_ran_as_js || "SAFE"}' AS status`,
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals(
+        asPlainObject([
+          {
+            type: "view",
+            enumType: "VIEW",
+            target: {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "with_md",
+            },
+            canonicalTarget: {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "with_md",
+            },
+            fileName: "definitions/with_md.sqlx",
+            query: "\nSELECT 'SAFE' AS status",
+            actionDescriptor: {
+              description: `global.__upper_md_ran_as_js = "RAN";\n# Uppercase docs`,
+            },
+            disabled: false,
+            hermeticity: "NON_HERMETIC",
           },
         ]),
       );
