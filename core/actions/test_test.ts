@@ -477,41 +477,300 @@ SELECT 1 AS a, 2 AS b`,
     );
   });
 
-  test(`test with incremental table`, () => {
-    const projectDir = tmpDirFixture.createNewTmpDir();
-    const workflowSettingsPath = path.join(projectDir, "workflow_settings.yaml");
-    const definitionsDir = path.join(projectDir, "definitions");
-    const actionSqlxPath = path.join(definitionsDir, "action.sqlx");
-    const actionTestSqlxPath = path.join(definitionsDir, "action_test.sqlx");
+  suite("incremental datasets", () => {
+    test(`sqlx test uses the full-refresh query`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      const workflowSettingsPath = path.join(projectDir, "workflow_settings.yaml");
+      const definitionsDir = path.join(projectDir, "definitions");
+      const actionsYamlPath = path.join(definitionsDir, "actions.yaml");
+      const actionSqlxPath = path.join(definitionsDir, "action.sqlx");
+      const actionTestSqlxPath = path.join(definitionsDir, "action_test.sqlx");
 
-    fs.writeFileSync(workflowSettingsPath, VALID_WORKFLOW_SETTINGS_YAML);
-    fs.mkdirSync(definitionsDir);
-
-    fs.writeFileSync(
-      actionSqlxPath,
-      `
+      fs.writeFileSync(workflowSettingsPath, VALID_WORKFLOW_SETTINGS_YAML);
+      fs.mkdirSync(definitionsDir);
+      fs.writeFileSync(
+        actionsYamlPath,
+        `
+actions:
+- declaration:
+    name: source`,
+      );
+      fs.writeFileSync(
+        actionSqlxPath,
+        `
 config {
-  type: "incremental",
+  type: "incremental"
 }
-SELECT 1 AS a
-    `,
-    );
-    fs.writeFileSync(
-      actionTestSqlxPath,
-      `
+pre_operations {
+  DECLARE max_ts TIMESTAMP DEFAULT (SELECT MAX(ts) FROM \${self()})
+}
+SELECT id, ts FROM \${ref("source")}
+\${when(incremental(), \`WHERE ts > max_ts\`, \`WHERE ts IS NOT NULL\`)}
+incremental_where {
+  ts > TIMESTAMP("2000-01-01")
+}
+post_operations {
+  SELECT "post_op"
+}`,
+      );
+      fs.writeFileSync(
+        actionTestSqlxPath,
+        `
 config {
   type: "test",
   dataset: "action"
 }
-SELECT 1 AS a`,
-    );
+input "source" {
+  SELECT 1 AS id, TIMESTAMP("2026-01-01") AS ts
+}
+SELECT 1 AS id, TIMESTAMP("2026-01-01") AS ts`,
+      );
 
-    const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
-    expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).equals(1);
-    expect(result.compile.compiledGraph.graphErrors.compilationErrors[0].message).contains(
-      `Running tests on incremental datasets is not yet supported.`,
-    );
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      // The ref is replaced by the input and the false branch of when(incremental()) is used. The
+      // pre-operation, incremental_where predicate and post-operation are not part of the query.
+      expect(asPlainObject(result.compile.compiledGraph.tests)).deep.equals(
+        asPlainObject([
+          {
+            name: "action_test",
+            testQuery:
+              '\n\n\nSELECT id, ts FROM (\n  SELECT 1 AS id, TIMESTAMP("2026-01-01") AS ts\n)\nWHERE ts IS NOT NULL\n\n',
+            expectedOutputQuery: '\n\n\nSELECT 1 AS id, TIMESTAMP("2026-01-01") AS ts',
+            fileName: "definitions/action_test.sqlx",
+            target: {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "action_test",
+            },
+            canonicalTarget: {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "action_test",
+            },
+          },
+        ]),
+      );
+    });
+
+    test(`js api test uses the full-refresh query`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      const workflowSettingsPath = path.join(projectDir, "workflow_settings.yaml");
+      const definitionsDir = path.join(projectDir, "definitions");
+      const fileJsPath = path.join(definitionsDir, "file.js");
+
+      fs.writeFileSync(workflowSettingsPath, VALID_WORKFLOW_SETTINGS_YAML);
+      fs.mkdirSync(definitionsDir);
+      fs.writeFileSync(
+        fileJsPath,
+        `
+declare({ name: "source" });
+publish("action", { type: "incremental" }).query(
+  (ctx) =>
+    \`SELECT id FROM \${ctx.ref("source")} \${ctx.when(
+      ctx.incremental(),
+      \`WHERE id > (SELECT MAX(id) FROM \${ctx.self()})\`,
+      "WHERE TRUE",
+    )}\`,
+);
+test("action_test")
+  .dataset("action")
+  .input("source", "SELECT 1 AS id")
+  .expect("SELECT 1 AS id");
+`,
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.tests)).deep.equals(
+        asPlainObject([
+          {
+            name: "action_test",
+            testQuery: "SELECT id FROM (SELECT 1 AS id) WHERE TRUE",
+            expectedOutputQuery: "SELECT 1 AS id",
+            fileName: "definitions/file.js",
+            target: {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "action_test",
+            },
+            canonicalTarget: {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "action_test",
+            },
+          },
+        ]),
+      );
+    });
+
+    test(`refs in either argument of when() need an input`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      const workflowSettingsPath = path.join(projectDir, "workflow_settings.yaml");
+      const definitionsDir = path.join(projectDir, "definitions");
+      const actionsYamlPath = path.join(definitionsDir, "actions.yaml");
+      const actionSqlxPath = path.join(definitionsDir, "action.sqlx");
+      const actionTestSqlxPath = path.join(definitionsDir, "action_test.sqlx");
+
+      fs.writeFileSync(workflowSettingsPath, VALID_WORKFLOW_SETTINGS_YAML);
+      fs.mkdirSync(definitionsDir);
+      fs.writeFileSync(
+        actionsYamlPath,
+        `
+actions:
+- declaration:
+    name: source
+- declaration:
+    name: other`,
+      );
+      fs.writeFileSync(
+        actionSqlxPath,
+        `
+config { type: "incremental" }
+SELECT id FROM \${ref("source")}
+\${when(incremental(), \`WHERE id IN (SELECT id FROM \${ref("other")})\`)}`,
+      );
+      fs.writeFileSync(
+        actionTestSqlxPath,
+        `
+config { type: "test", dataset: "action" }
+input "source" { SELECT 1 AS id }
+SELECT 1 AS id`,
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      const errors = result.compile.compiledGraph.graphErrors.compilationErrors;
+      expect(errors.length).equals(1);
+      expect(errors[0].message).contains(
+        `Input for dataset "{"name":"other"}" has not been provided.`,
+      );
+    });
+
+    test(`includeTestsInCompiledGraph makes the incremental table depend on its test`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      const workflowSettingsPath = path.join(projectDir, "workflow_settings.yaml");
+      const definitionsDir = path.join(projectDir, "definitions");
+      const actionSqlxPath = path.join(definitionsDir, "action.sqlx");
+      const actionTestSqlxPath = path.join(definitionsDir, "action_test.sqlx");
+
+      fs.writeFileSync(
+        workflowSettingsPath,
+        `
+defaultProject: defaultProject
+defaultDataset: defaultDataset
+defaultLocation: US
+includeTestsInCompiledGraph: true
+`,
+      );
+      fs.mkdirSync(definitionsDir);
+      fs.writeFileSync(
+        actionSqlxPath,
+        `
+config { type: "incremental" }
+SELECT 1 AS id`,
+      );
+      fs.writeFileSync(
+        actionTestSqlxPath,
+        `
+config { type: "test", dataset: "action" }
+SELECT 1 AS id`,
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals(
+        asPlainObject([
+          {
+            target: { database: "defaultProject", schema: "defaultDataset", name: "action" },
+            canonicalTarget: {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "action",
+            },
+            dependencyTargets: [
+              { database: "defaultProject", schema: "defaultDataset", name: "action_test" },
+            ],
+            disabled: false,
+            enumType: "INCREMENTAL",
+            fileName: "definitions/action.sqlx",
+            hermeticity: "NON_HERMETIC",
+            incrementalQuery: "\n\nSELECT 1 AS id",
+            incrementalStrategy: "INCREMENTAL_STRATEGY_UNSPECIFIED",
+            onSchemaChange: "IGNORE",
+            protected: false,
+            query: "\n\nSELECT 1 AS id",
+            type: "incremental",
+          },
+        ]),
+      );
+    });
+  });
+
+  suite("datasets without an ahead-of-time query", () => {
+    ["table", "view", "incremental"].forEach((datasetType) => {
+      test(`test on a JiT-compiled ${datasetType} fails to compile with a clear error`, () => {
+        const projectDir = tmpDirFixture.createNewTmpDir();
+        const workflowSettingsPath = path.join(projectDir, "workflow_settings.yaml");
+        const definitionsDir = path.join(projectDir, "definitions");
+        const actionSqlxPath = path.join(definitionsDir, "action.sqlx");
+        const actionTestSqlxPath = path.join(definitionsDir, "action_test.sqlx");
+
+        fs.writeFileSync(workflowSettingsPath, VALID_WORKFLOW_SETTINGS_YAML);
+        fs.mkdirSync(definitionsDir);
+        fs.writeFileSync(
+          actionSqlxPath,
+          `config { type: "${datasetType}", compilation_mode: "jit" }
+js {
+  const foo = "bar";
+}
+SELECT 1 AS id`,
+        );
+        fs.writeFileSync(
+          actionTestSqlxPath,
+          `
+config { type: "test", dataset: "action" }
+SELECT 1 AS id`,
+        );
+
+        const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+        const errors = result.compile.compiledGraph.graphErrors.compilationErrors;
+        expect(errors.map((error) => error.message)).deep.equals([
+          `Dataset defaultProject.defaultDataset.action has no query to test. Datasets that use JiT compilation, or that define no query, can't be tested.`,
+        ]);
+      });
+    });
+    ["table", "incremental"].forEach((datasetType) => {
+      test(`test on a js ${datasetType} with no query fails to compile with a clear error`, () => {
+        const projectDir = tmpDirFixture.createNewTmpDir();
+        const workflowSettingsPath = path.join(projectDir, "workflow_settings.yaml");
+        const definitionsDir = path.join(projectDir, "definitions");
+        const fileJsPath = path.join(definitionsDir, "file.js");
+
+        fs.writeFileSync(workflowSettingsPath, VALID_WORKFLOW_SETTINGS_YAML);
+        fs.mkdirSync(definitionsDir);
+        fs.writeFileSync(
+          fileJsPath,
+          `
+publish("action", { type: "${datasetType}" });
+test("action_test").dataset("action").expect("SELECT 1 AS id");
+`,
+        );
+
+        const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+        const messages = result.compile.compiledGraph.graphErrors.compilationErrors.map(
+          (error) => error.message,
+        );
+        expect(messages).to.include(
+          `Dataset defaultProject.defaultDataset.action has no query to test. Datasets that use JiT compilation, or that define no query, can't be tested.`,
+        );
+      });
+    });
   });
 
   test(`test with includeTestsInCompiledGraph set`, () => {
