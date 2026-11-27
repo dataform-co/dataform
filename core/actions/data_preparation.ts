@@ -55,7 +55,7 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
       }
     } else if (
       config.name.toLowerCase().endsWith(".dp") &&
-      config.filename?.toLowerCase().endsWith(".dp.sqlx")
+      config.filename.toLowerCase().endsWith(".dp.sqlx")
     ) {
       // SQLX actions have the name set in the config from the file name.
       // Remove the .dp suffix to avoid compilation failures.
