@@ -394,7 +394,7 @@ suite("schema creation", () => {
     ]);
   });
 
-  test("in real runs, reports the SQL sent for wrapped tasks only", async () => {
+  test("in real runs, reports the SQL sent for both wrapped and unwrapped tasks", async () => {
     const graph = dataform.ExecutionGraph.create({
       projectConfig,
       runConfig: {},
@@ -411,10 +411,8 @@ suite("schema creation", () => {
     expect(
       result.actions.map((action) => [action.target.name, action.tasks[0].compiledSql]),
     ).to.have.deep.members([
-      // Error positions refer to the wrapped SQL, so it's what is shown.
       ["a", wrapped("new_ds", "CREATE TABLE a")],
-      // Unwrapped tasks show their own statement, as before.
-      ["c", undefined],
+      ["c", "CREATE TABLE c"],
     ]);
   });
 

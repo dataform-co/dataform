@@ -805,12 +805,9 @@ export class Runner {
     };
     parentAction.tasks.push(taskResult);
     this.notifyListeners();
-    // The SQL actually sent to BigQuery, so that error positions refer to what is shown. Always set
-    // in dry runs; in real runs only when it differs from the task's statement (e.g. wrapped in a
-    // script creating the target dataset), as the task's statement is shown otherwise.
-    if (options.bigquery?.dryRun || statementOverride !== undefined) {
-      taskResult.compiledSql = statementOverride ?? task.statement;
-    }
+    // The SQL actually sent to BigQuery (or that would be sent, for dry-run assertions), so that
+    // RunResult includes it and error positions refer to what is shown.
+    taskResult.compiledSql = statementOverride ?? task.statement;
     if (options.bigquery?.dryRun && task.type === "assertion") {
       taskResult.status = dataform.TaskResult.ExecutionStatus.SUCCESSFUL;
     } else {

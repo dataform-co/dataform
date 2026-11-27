@@ -748,10 +748,10 @@ function printExecutedActionErrors(
   executedAction: dataform.IActionResult,
   executionAction: dataform.IExecutionAction,
 ) {
-  const failingTasks = executedAction.tasks.filter(
-    (task) => task.status === dataform.TaskResult.ExecutionStatus.FAILED,
-  );
-  failingTasks.forEach((task, i) => {
+  executedAction.tasks.forEach((task, i) => {
+    if (task.status !== dataform.TaskResult.ExecutionStatus.FAILED) {
+      return;
+    }
     // For JiT actions, the original executionAction.tasks might be empty
     // since they are generated during re-compilation.
     const statement = task.compiledSql || executionAction.tasks[i]?.statement;

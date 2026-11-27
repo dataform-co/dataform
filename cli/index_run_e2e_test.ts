@@ -584,31 +584,55 @@ SELECT 1 AS id
     );
 
     test("run --json executes actions and outputs RunResult", { timeout: 120000 }, async () => {
+      writeDefinitionFile(
+        projectDir,
+        "jit_table.js",
+        `publish("jit_table", { type: "table", dependencies: ["example_table"] }).jitCode(async (jctx) => {
+          return "SELECT id, 'jit' AS source FROM " + jctx.ref("example_table");
+        });`,
+      );
+
       const result = await runCli("run", [
         projectDir,
         "--credentials",
         CREDENTIALS_PATH,
         "--json",
-        "--actions=example_table",
+        "--actions=example_table,jit_table",
       ]);
 
       expect(result.exitCode, `stdout:\n${result.stdout}\nstderr:\n${result.stderr}`).equals(0);
       const parsed = JSON.parse(result.stdout);
       expect(parsed.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
-      expect(parsed.actions).to.have.lengthOf(1);
-      expect(parsed.actions[0].target).deep.equals({
+      expect(parsed.actions).to.have.lengthOf(2);
+
+      const exampleAction = parsed.actions.find((a: any) => a.target.name === "example_table");
+      expect(exampleAction?.target).deep.equals({
         database: INTEGRATION_TEST_PROJECT,
         schema: uniqueDataset,
         name: "example_table",
       });
-      expect(parsed.actions[0].status).equals(dataform.ActionResult.ExecutionStatus.SUCCESSFUL);
-      expect(parsed.actions[0].tasks).to.have.lengthOf(1);
-      expect(parsed.actions[0].tasks[0].status).equals(
-        dataform.TaskResult.ExecutionStatus.SUCCESSFUL,
+      expect(exampleAction.status).equals(dataform.ActionResult.ExecutionStatus.SUCCESSFUL);
+      expect(exampleAction.tasks).to.have.lengthOf(1);
+      expect(exampleAction.tasks[0].status).equals(dataform.TaskResult.ExecutionStatus.SUCCESSFUL);
+      expect(exampleAction.tasks[0].compiledSql).to.include(
+        `create or replace table \`${INTEGRATION_TEST_PROJECT}.${uniqueDataset}.example_table\` as`,
       );
-      expect(parsed.actions[0].tasks[0].metadata?.bigquery?.jobId)
-        .to.be.a("string")
-        .and.not.equal("");
+      expect(exampleAction.tasks[0].compiledSql).to.include("SELECT 1 AS id");
+      expect(exampleAction.tasks[0].metadata?.bigquery?.jobId).to.be.a("string").and.not.equal("");
+
+      const jitAction = parsed.actions.find((a: any) => a.target.name === "jit_table");
+      expect(jitAction?.target).deep.equals({
+        database: INTEGRATION_TEST_PROJECT,
+        schema: uniqueDataset,
+        name: "jit_table",
+      });
+      expect(jitAction.status).equals(dataform.ActionResult.ExecutionStatus.SUCCESSFUL);
+      expect(jitAction.tasks).to.have.lengthOf(1);
+      expect(jitAction.tasks[0].status).equals(dataform.TaskResult.ExecutionStatus.SUCCESSFUL);
+      expect(jitAction.tasks[0].compiledSql).equals(
+        `create or replace table \`${INTEGRATION_TEST_PROJECT}.${uniqueDataset}.jit_table\` as SELECT id, 'jit' AS source FROM \`${INTEGRATION_TEST_PROJECT}.${uniqueDataset}.example_table\``,
+      );
+      expect(jitAction.tasks[0].metadata?.bigquery?.jobId).to.be.a("string").and.not.equal("");
     });
 
     test(

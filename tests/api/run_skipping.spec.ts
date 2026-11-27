@@ -74,7 +74,12 @@ suite("@dataform/api/run skipped and stranded actions", () => {
           target: target("a"),
           status: "FAILED",
           tasks: [
-            { status: "FAILED", errorMessage: "bigquery error: bad statement", metadata: {} },
+            {
+              status: "FAILED",
+              compiledSql: FAILING_STATEMENT,
+              errorMessage: "bigquery error: bad statement",
+              metadata: {},
+            },
           ],
         },
         { target: target("b"), status: "SKIPPED", tasks: [{ status: "SKIPPED" }] },
@@ -146,7 +151,12 @@ suite("@dataform/api/run skipped and stranded actions", () => {
           target: target("a"),
           status: "FAILED",
           tasks: [
-            { status: "FAILED", errorMessage: "bigquery error: bad statement", metadata: {} },
+            {
+              status: "FAILED",
+              compiledSql: FAILING_STATEMENT,
+              errorMessage: "bigquery error: bad statement",
+              metadata: {},
+            },
           ],
         },
         { target: target("without_tasks"), status: "SKIPPED" },
@@ -182,7 +192,7 @@ suite("@dataform/api/run skipped and stranded actions", () => {
         {
           target: target("root"),
           status: "SUCCESSFUL",
-          tasks: [{ status: "SUCCESSFUL", metadata: {} }],
+          tasks: [{ status: "SUCCESSFUL", compiledSql: "some statement", metadata: {} }],
         },
         { target: target("a"), status: "FAILED", tasks: strandedTasks },
         { target: target("b"), status: "FAILED", tasks: strandedTasks },
