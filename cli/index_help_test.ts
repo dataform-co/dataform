@@ -27,6 +27,10 @@ suite("help command", () => {
     expect(output).to.include(
       "Initialize the project with workflow-level Iceberg tables configuration.",
     );
+    expect(output).to.include("--lakehouse");
+    expect(output).to.include(
+      "Initialize the project with workflow-level Lakehouse configuration.",
+    );
   });
 
   test("shows help for 'install' command", async () => {
