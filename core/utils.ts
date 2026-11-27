@@ -46,39 +46,69 @@ function globToRegExp(pattern: string): RegExp {
   return new RegExp(`^${pattern.replace(/\*+/g, "*").split("*").map(escapeLiteral).join(".*")}$`);
 }
 
-export function matchPatterns(patterns: string[], values: string[]) {
-  const fullyQualifiedActions: string[] = [];
+/** @internal */
+export interface IMatchCandidate {
+  fullName: string;
+  shortName?: string;
+  key: string;
+  disambiguatedName?: string;
+}
+
+/** @internal */
+export function matchCandidatePatterns(
+  patterns: string[],
+  candidates: IMatchCandidate[],
+): string[] {
+  const matchedKeys: string[] = [];
   patterns.forEach((pattern) => {
     if (pattern.includes("*")) {
-      // Wildcard selector. A pattern that contains "." matches against the
-      // fully-qualified action name; otherwise it matches against the unqualified
-      // name (last segment), mirroring the exact-match branches below. Wildcards
-      // are expected to select many actions, so no ambiguity error applies here.
+      // Wildcard selector: patterns containing "." match the full readable target string;
+      // otherwise they match the unqualified action name, with no ambiguity error.
       const regExp = globToRegExp(pattern);
-      const scope = pattern.includes(".")
-        ? values
-        : values.map((value) => value.split(".").slice(-1)[0]);
-      values.forEach((value, i) => {
-        if (regExp.test(scope[i])) {
-          fullyQualifiedActions.push(value);
+      const matchFullTarget = pattern.includes(".");
+      candidates.forEach((candidate) => {
+        const value = matchFullTarget ? candidate.fullName : candidate.shortName;
+        if (value !== undefined && regExp.test(value)) {
+          matchedKeys.push(candidate.key);
         }
       });
     } else if (pattern.includes(".")) {
-      if (values.includes(pattern)) {
-        fullyQualifiedActions.push(pattern);
-      }
+      // Dotted selectors are already fully qualified in CLI syntax, so when distinct targets
+      // render to the same dotted string, all matching targets are selected.
+      candidates.forEach((candidate) => {
+        if (candidate.fullName === pattern) {
+          matchedKeys.push(candidate.key);
+        }
+      });
     } else {
-      const matchingActions = values.filter((value) => pattern === value.split(".").slice(-1)[0]);
-      if (matchingActions.length === 0) {
+      const matching = candidates.filter((candidate) => candidate.shortName === pattern);
+      if (matching.length === 0) {
         return;
       }
-      if (matchingActions.length > 1) {
-        throw new Error(ambiguousActionNameMsg(pattern, matchingActions));
+      if (matching.length > 1) {
+        const fullNames = matching.map((candidate) => candidate.fullName);
+        const displayNames =
+          new Set(fullNames).size < fullNames.length
+            ? matching.map((candidate) => candidate.disambiguatedName || candidate.fullName)
+            : fullNames;
+        throw new Error(ambiguousActionNameMsg(pattern, displayNames));
       }
-      fullyQualifiedActions.push(matchingActions[0]);
+      matchedKeys.push(matching[0].key);
     }
   });
-  return fullyQualifiedActions;
+  return matchedKeys;
+}
+
+/** @internal */
+export function matchPatterns(patterns: string[], values: string[]) {
+  return matchCandidatePatterns(
+    patterns,
+    values.map((value) => ({
+      fullName: value,
+      shortName: value.split(".").slice(-1)[0],
+      key: value,
+    })),
+  );
 }
 
 export function getCallerFile(rootDir: string) {

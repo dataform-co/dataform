@@ -1,98 +1,138 @@
-import { targetAsReadableString } from "df/core/targets";
+import { targetAsReadableString, targetStringifier } from "df/core/targets";
 import * as utils from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
 type CompileAction =
   dataform.ITable | dataform.IOperation | dataform.IAssertion | dataform.IPropertyGraph;
 
+function targetKey(target?: dataform.ITarget | null): string | undefined {
+  return target ? targetStringifier.stringify(target) : undefined;
+}
+
+function formatTargetParts(target: dataform.ITarget): string {
+  const parts = [
+    target.database ? `database: "${target.database}"` : undefined,
+    target.schema ? `schema: "${target.schema}"` : undefined,
+    target.name ? `name: "${target.name}"` : undefined,
+  ].filter(Boolean);
+  return `{ ${parts.join(", ")} }`;
+}
+
 export function prune(
   compiledGraph: dataform.ICompiledGraph,
   runConfig: dataform.IRunConfig,
 ): dataform.ICompiledGraph {
-  compiledGraph.tables.forEach(utils.setOrValidateTableEnumType);
-  const includedActionNames = computeIncludedActionNames(compiledGraph, runConfig);
+  (compiledGraph.tables || []).forEach(utils.setOrValidateTableEnumType);
+  const { includedActionKeys, keyByAction } = computeIncludedActionKeys(compiledGraph, runConfig);
+  const isActionIncluded = (action: CompileAction) => {
+    const key = keyByAction.get(action);
+    return key !== undefined && includedActionKeys.has(key);
+  };
+  const isTargetIncluded = (target?: dataform.ITarget | null) => {
+    const key = targetKey(target);
+    return key !== undefined && includedActionKeys.has(key);
+  };
   return {
     ...compiledGraph,
-    tables: compiledGraph.tables.filter((action) =>
-      includedActionNames.has(targetAsReadableString(action.target)),
-    ),
-    assertions: compiledGraph.assertions.filter((action) =>
-      includedActionNames.has(targetAsReadableString(action.target)),
-    ),
-    operations: compiledGraph.operations.filter((action) =>
-      includedActionNames.has(targetAsReadableString(action.target)),
-    ),
-    propertyGraphs: compiledGraph.propertyGraphs?.filter((action) =>
-      includedActionNames.has(targetAsReadableString(action.target)),
-    ),
+    tables: (compiledGraph.tables || []).filter(isActionIncluded),
+    assertions: (compiledGraph.assertions || []).filter(isActionIncluded),
+    operations: (compiledGraph.operations || []).filter(isActionIncluded),
+    propertyGraphs: compiledGraph.propertyGraphs?.filter(isActionIncluded),
     // `targets` is declarative output only (nothing downstream reads it), but
     // `compile` prints it, so it has to agree with the filtered action lists.
-    targets: compiledGraph.targets?.filter((target) =>
-      includedActionNames.has(targetAsReadableString(target)),
-    ),
+    targets: compiledGraph.targets?.filter(isTargetIncluded),
   };
 }
 
-function computeIncludedActionNames(
+function computeIncludedActionKeys(
   compiledGraph: dataform.ICompiledGraph,
   runConfig: dataform.IRunConfig,
-): Set<string> {
+): { includedActionKeys: Set<string>; keyByAction: Map<CompileAction, string> } {
   // Union all tables, operations, assertions, property graphs.
   const allActions: CompileAction[] = [].concat(
-    compiledGraph.tables,
-    compiledGraph.operations,
-    compiledGraph.assertions,
-    compiledGraph.propertyGraphs,
+    compiledGraph.tables || [],
+    compiledGraph.operations || [],
+    compiledGraph.assertions || [],
+    compiledGraph.propertyGraphs || [],
   );
 
-  const allActionNames = new Set<string>(
-    allActions.map((action) => targetAsReadableString(action.target)),
-  );
-  const allActionsByName = new Map<string, CompileAction>(
-    allActions.map((action) => [targetAsReadableString(action.target), action]),
-  );
+  const allActionKeys = new Set<string>();
+  const keyByAction = new Map<CompileAction, string>();
+  const keyedActions: Array<{ action: CompileAction; key: string }> = [];
+  allActions.forEach((action) => {
+    const key = targetKey(action?.target);
+    if (key !== undefined) {
+      allActionKeys.add(key);
+      keyByAction.set(action, key);
+      keyedActions.push({ action, key });
+    }
+  });
 
   const hasActionSelector = runConfig.actions?.length > 0;
   const hasTagSelector = runConfig.tags?.length > 0;
 
   // If no selectors, return all actions.
   if (!hasActionSelector && !hasTagSelector) {
-    return allActionNames;
+    return { includedActionKeys: allActionKeys, keyByAction };
   }
 
-  const includedActionNames = new Set<string>();
+  const includedActionKeys = new Set<string>();
 
   // Add all actions included by action filters.
   if (hasActionSelector) {
+    const candidates: utils.IMatchCandidate[] = keyedActions.map(({ action, key }) => {
+      const fullName = targetAsReadableString(action.target);
+      return {
+        fullName,
+        shortName: action.target.name,
+        key,
+        disambiguatedName: `${fullName} (${formatTargetParts(action.target)})`,
+      };
+    });
     utils
-      .matchPatterns(runConfig.actions, [...allActionNames])
-      .forEach((actionName) => includedActionNames.add(actionName));
+      .matchCandidatePatterns(runConfig.actions, candidates)
+      .forEach((actionKey) => includedActionKeys.add(actionKey));
   }
 
   // Determine actions selected with --tag option and update applicable actions
   if (hasTagSelector) {
-    allActions
-      .filter((action) => action.tags?.some((tag) => runConfig.tags.includes(tag)))
-      .forEach((action) => includedActionNames.add(targetAsReadableString(action.target)));
+    keyedActions.forEach(({ action, key }) => {
+      if (action.tags?.some((tag) => runConfig.tags.includes(tag))) {
+        includedActionKeys.add(key);
+      }
+    });
+  }
+
+  const dependencyKeysByActionKey = new Map<string, string[]>();
+  const dependentKeysByActionKey = new Map<string, string[]>();
+  if (runConfig.includeDependencies || runConfig.includeDependents) {
+    keyedActions.forEach(({ action, key }) => {
+      const dependencyKeys: string[] = [];
+      (action.dependencyTargets || []).forEach((dependency) => {
+        const dependencyKey = targetKey(dependency);
+        if (dependencyKey !== undefined && allActionKeys.has(dependencyKey)) {
+          dependencyKeys.push(dependencyKey);
+          let dependents = dependentKeysByActionKey.get(dependencyKey);
+          if (!dependents) {
+            dependents = [];
+            dependentKeysByActionKey.set(dependencyKey, dependents);
+          }
+          dependents.push(key);
+        }
+      });
+      dependencyKeysByActionKey.set(key, dependencyKeys);
+    });
   }
 
   // Compute all transitive dependencies.
   if (runConfig.includeDependencies) {
-    const queue = [...includedActionNames];
+    const queue = [...includedActionKeys];
     while (queue.length > 0) {
-      const actionName = queue.pop();
-      const action = allActionsByName.get(actionName);
-      const matchingDependencyNames =
-        action.dependencyTargets?.length > 0
-          ? utils.matchPatterns(
-              action.dependencyTargets.map((dependency) => targetAsReadableString(dependency)),
-              [...allActionNames],
-            )
-          : [];
-      matchingDependencyNames.forEach((dependencyName) => {
-        if (!includedActionNames.has(dependencyName)) {
-          queue.push(dependencyName);
-          includedActionNames.add(dependencyName);
+      const actionKey = queue.pop();
+      (dependencyKeysByActionKey.get(actionKey) || []).forEach((dependencyKey) => {
+        if (!includedActionKeys.has(dependencyKey)) {
+          queue.push(dependencyKey);
+          includedActionKeys.add(dependencyKey);
         }
       });
     }
@@ -100,28 +140,17 @@ function computeIncludedActionNames(
 
   // Compute all transitive dependents.
   if (runConfig.includeDependents) {
-    const queue = [...includedActionNames];
+    const queue = [...includedActionKeys];
     while (queue.length > 0) {
-      const actionName = queue.pop();
-      const matchingDependentNames = allActions
-        .filter(
-          (compileAction) =>
-            utils.matchPatterns(
-              [actionName],
-              compileAction.dependencyTargets?.map((dependency) =>
-                targetAsReadableString(dependency),
-              ) || [],
-            ).length >= 1,
-        )
-        .map((compileAction) => targetAsReadableString(compileAction.target));
-      matchingDependentNames.forEach((dependentName) => {
-        if (!includedActionNames.has(dependentName)) {
-          queue.push(dependentName);
-          includedActionNames.add(dependentName);
+      const actionKey = queue.pop();
+      (dependentKeysByActionKey.get(actionKey) || []).forEach((dependentKey) => {
+        if (!includedActionKeys.has(dependentKey)) {
+          queue.push(dependentKey);
+          includedActionKeys.add(dependentKey);
         }
       });
     }
   }
 
-  return includedActionNames;
+  return { includedActionKeys, keyByAction };
 }

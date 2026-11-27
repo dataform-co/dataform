@@ -703,6 +703,16 @@ SELECT 1 as id
       const result = await runCli("compile", [projectDir, "--output-actions", "*stream", "--json"]);
       expect(result.exitCode, result.stderr).equals(0);
       expect(tableNames(result.stdout)).deep.equals(["downstream", "midstream", "upstream"]);
+
+      const withDepsResult = await runCli("compile", [
+        projectDir,
+        "--output-actions",
+        "*.mid*",
+        "--output-include-deps",
+        "--json",
+      ]);
+      expect(withDepsResult.exitCode, withDepsResult.stderr).equals(0);
+      expect(tableNames(withDepsResult.stdout)).deep.equals(["midstream", "upstream"]);
     });
 
     test("--output-actions with --schema-suffix retains suffixed targets", async () => {

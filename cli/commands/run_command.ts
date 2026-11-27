@@ -108,6 +108,29 @@ function createLineageEmitter(
   });
 }
 
+export function createExecutedGraphPrinter(
+  actionsByTarget: ReadonlyMap<string, dataform.IExecutionAction>,
+  dryRun?: boolean,
+): (executedGraph: dataform.IRunResult) => void {
+  const alreadyPrintedActions = new Set<string>();
+  return (executedGraph: dataform.IRunResult) => {
+    for (const executedAction of executedGraph.actions || []) {
+      if (
+        executedAction.status === dataform.ActionResult.ExecutionStatus.RUNNING ||
+        !executedAction.target
+      ) {
+        continue;
+      }
+      const targetKey = targetStringifier.stringify(executedAction.target);
+      if (alreadyPrintedActions.has(targetKey)) {
+        continue;
+      }
+      printExecutedAction(executedAction, actionsByTarget.get(targetKey), dryRun);
+      alreadyPrintedActions.add(targetKey);
+    }
+  };
+}
+
 export const runCommand: ICommand<IRunArgs> = {
   format: `run [${projectDirOption.name}]`,
   description: "Run the dataform project.",
@@ -236,12 +259,14 @@ export const runCommand: ICommand<IRunArgs> = {
       bigqueryOptions = { ...bigqueryOptions, labels: argv.jobLabels };
     }
 
-    const actionsByName = new Map<string, dataform.IExecutionAction>();
+    const actionsByTarget = new Map<string, dataform.IExecutionAction>();
     executionGraph.actions.forEach((action) => {
-      actionsByName.set(targetAsReadableString(action.target), action);
+      if (action.target) {
+        actionsByTarget.set(targetStringifier.stringify(action.target), action);
+      }
     });
 
-    if (actionsByName.size === 0) {
+    if (actionsByTarget.size === 0) {
       if (argv.json) {
         print(
           prettyJsonStringify({
@@ -280,26 +305,7 @@ export const runCommand: ICommand<IRunArgs> = {
     // The first Ctrl+C cancels the run gracefully; a second one exits immediately.
     setSignalHandler("SIGINT", () => runner.cancel());
 
-    const alreadyPrintedActions = new Set<string>();
-
-    const printExecutedGraph = (executedGraph: dataform.IRunResult) => {
-      executedGraph.actions
-        .filter(
-          (actionResult) => actionResult.status !== dataform.ActionResult.ExecutionStatus.RUNNING,
-        )
-        .filter(
-          (executedAction) =>
-            !alreadyPrintedActions.has(targetAsReadableString(executedAction.target)),
-        )
-        .forEach((executedAction) => {
-          printExecutedAction(
-            executedAction,
-            actionsByName.get(targetAsReadableString(executedAction.target)),
-            argv.dryRun,
-          );
-          alreadyPrintedActions.add(targetAsReadableString(executedAction.target));
-        });
-    };
+    const printExecutedGraph = createExecutedGraphPrinter(actionsByTarget, argv.dryRun);
 
     if (!argv.json) {
       runner.onChange(printExecutedGraph);
