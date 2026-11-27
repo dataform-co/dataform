@@ -290,7 +290,36 @@ suite("prune", () => {
         targets: [COLLIDING_TABLE_TARGET, otherC.target],
       };
       expect(() => prune(graph, { actions: ["c"] })).to.throw(
-        "Ambiguous Action name: c. Did you mean one of: proj.b.c, proj.b.c.",
+        'Ambiguous Action name: c. Did you mean one of: proj.b.c ({ database: "proj", schema: "b", name: "c" }), proj.b.c ({ schema: "proj.b", name: "c" }).',
+      );
+    });
+
+    test("unqualified --actions keeps plain readable names when candidates do not collide", () => {
+      const firstC: dataform.ITable = {
+        type: "view",
+        enumType: dataform.TableType.VIEW,
+        target: { database: "proj", schema: "s1", name: "c" },
+        canonicalTarget: { database: "proj", schema: "s1", name: "c" },
+        query: "select 1",
+        dependencyTargets: [],
+      };
+      const secondC: dataform.ITable = {
+        type: "view",
+        enumType: dataform.TableType.VIEW,
+        target: { database: "proj", schema: "s2", name: "c" },
+        canonicalTarget: { database: "proj", schema: "s2", name: "c" },
+        query: "select 2",
+        dependencyTargets: [],
+      };
+      const graph: dataform.ICompiledGraph = {
+        tables: [firstC, secondC],
+        operations: [],
+        assertions: [],
+        propertyGraphs: [],
+        targets: [firstC.target, secondC.target],
+      };
+      expect(() => prune(graph, { actions: ["c"] })).to.throw(
+        "Ambiguous Action name: c. Did you mean one of: proj.s1.c, proj.s2.c.",
       );
     });
 

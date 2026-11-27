@@ -9,76 +9,45 @@ function targetKey(target?: dataform.ITarget | null): string | undefined {
   return target ? targetStringifier.stringify(target) : undefined;
 }
 
+function formatTargetParts(target: dataform.ITarget): string {
+  const parts = [
+    target.database ? `database: "${target.database}"` : undefined,
+    target.schema ? `schema: "${target.schema}"` : undefined,
+    target.name ? `name: "${target.name}"` : undefined,
+  ].filter(Boolean);
+  return `{ ${parts.join(", ")} }`;
+}
+
 export function prune(
   compiledGraph: dataform.ICompiledGraph,
   runConfig: dataform.IRunConfig,
 ): dataform.ICompiledGraph {
   (compiledGraph.tables || []).forEach(utils.setOrValidateTableEnumType);
-  const includedActionKeys = computeIncludedActionKeys(compiledGraph, runConfig);
-  const isIncluded = (target?: dataform.ITarget | null) => {
+  const { includedActionKeys, keyByAction } = computeIncludedActionKeys(compiledGraph, runConfig);
+  const isActionIncluded = (action: CompileAction) => {
+    const key = keyByAction.get(action);
+    return key !== undefined && includedActionKeys.has(key);
+  };
+  const isTargetIncluded = (target?: dataform.ITarget | null) => {
     const key = targetKey(target);
     return key !== undefined && includedActionKeys.has(key);
   };
   return {
     ...compiledGraph,
-    tables: (compiledGraph.tables || []).filter((action) => isIncluded(action.target)),
-    assertions: (compiledGraph.assertions || []).filter((action) => isIncluded(action.target)),
-    operations: (compiledGraph.operations || []).filter((action) => isIncluded(action.target)),
-    propertyGraphs: compiledGraph.propertyGraphs?.filter((action) => isIncluded(action.target)),
+    tables: (compiledGraph.tables || []).filter(isActionIncluded),
+    assertions: (compiledGraph.assertions || []).filter(isActionIncluded),
+    operations: (compiledGraph.operations || []).filter(isActionIncluded),
+    propertyGraphs: compiledGraph.propertyGraphs?.filter(isActionIncluded),
     // `targets` is declarative output only (nothing downstream reads it), but
     // `compile` prints it, so it has to agree with the filtered action lists.
-    targets: compiledGraph.targets?.filter((target) => isIncluded(target)),
+    targets: compiledGraph.targets?.filter(isTargetIncluded),
   };
-}
-
-function matchActionSelectors(patterns: string[], allActions: CompileAction[]): string[] {
-  const matchedActionKeys: string[] = [];
-  patterns.forEach((pattern) => {
-    if (pattern.includes("*")) {
-      // Wildcard selector: patterns containing "." match the full readable target string;
-      // otherwise they match the unqualified action name, with no ambiguity error.
-      const regExp = utils.globToRegExp(pattern);
-      const matchFullTarget = pattern.includes(".");
-      allActions.forEach((action) => {
-        if (!action.target) {
-          return;
-        }
-        const candidate = matchFullTarget
-          ? targetAsReadableString(action.target)
-          : action.target.name;
-        if (candidate !== undefined && regExp.test(candidate)) {
-          matchedActionKeys.push(targetStringifier.stringify(action.target));
-        }
-      });
-    } else if (pattern.includes(".")) {
-      allActions.forEach((action) => {
-        if (action.target && targetAsReadableString(action.target) === pattern) {
-          matchedActionKeys.push(targetStringifier.stringify(action.target));
-        }
-      });
-    } else {
-      const matchingActions = allActions.filter((action) => action.target?.name === pattern);
-      if (matchingActions.length === 0) {
-        return;
-      }
-      if (matchingActions.length > 1) {
-        throw new Error(
-          utils.ambiguousActionNameMsg(
-            pattern,
-            matchingActions.map((action) => targetAsReadableString(action.target)),
-          ),
-        );
-      }
-      matchedActionKeys.push(targetStringifier.stringify(matchingActions[0].target));
-    }
-  });
-  return matchedActionKeys;
 }
 
 function computeIncludedActionKeys(
   compiledGraph: dataform.ICompiledGraph,
   runConfig: dataform.IRunConfig,
-): Set<string> {
+): { includedActionKeys: Set<string>; keyByAction: Map<CompileAction, string> } {
   // Union all tables, operations, assertions, property graphs.
   const allActions: CompileAction[] = [].concat(
     compiledGraph.tables || [],
@@ -88,12 +57,14 @@ function computeIncludedActionKeys(
   );
 
   const allActionKeys = new Set<string>();
-  const allActionsByKey = new Map<string, CompileAction>();
+  const keyByAction = new Map<CompileAction, string>();
+  const keyedActions: Array<{ action: CompileAction; key: string }> = [];
   allActions.forEach((action) => {
     const key = targetKey(action?.target);
     if (key !== undefined) {
       allActionKeys.add(key);
-      allActionsByKey.set(key, action);
+      keyByAction.set(action, key);
+      keyedActions.push({ action, key });
     }
   });
 
@@ -102,28 +73,55 @@ function computeIncludedActionKeys(
 
   // If no selectors, return all actions.
   if (!hasActionSelector && !hasTagSelector) {
-    return allActionKeys;
+    return { includedActionKeys: allActionKeys, keyByAction };
   }
 
   const includedActionKeys = new Set<string>();
 
   // Add all actions included by action filters.
   if (hasActionSelector) {
-    matchActionSelectors(runConfig.actions, allActions).forEach((actionKey) =>
-      includedActionKeys.add(actionKey),
-    );
+    const candidates: utils.IMatchCandidate[] = keyedActions.map(({ action, key }) => {
+      const fullName = targetAsReadableString(action.target);
+      return {
+        fullName,
+        shortName: action.target.name,
+        key,
+        disambiguatedName: `${fullName} (${formatTargetParts(action.target)})`,
+      };
+    });
+    utils
+      .matchCandidatePatterns(runConfig.actions, candidates)
+      .forEach((actionKey) => includedActionKeys.add(actionKey));
   }
 
   // Determine actions selected with --tag option and update applicable actions
   if (hasTagSelector) {
-    allActions
-      .filter((action) => action.tags?.some((tag) => runConfig.tags.includes(tag)))
-      .forEach((action) => {
-        const key = targetKey(action.target);
-        if (key !== undefined) {
-          includedActionKeys.add(key);
+    keyedActions.forEach(({ action, key }) => {
+      if (action.tags?.some((tag) => runConfig.tags.includes(tag))) {
+        includedActionKeys.add(key);
+      }
+    });
+  }
+
+  const dependencyKeysByActionKey = new Map<string, string[]>();
+  const dependentKeysByActionKey = new Map<string, string[]>();
+  if (runConfig.includeDependencies || runConfig.includeDependents) {
+    keyedActions.forEach(({ action, key }) => {
+      const dependencyKeys: string[] = [];
+      (action.dependencyTargets || []).forEach((dependency) => {
+        const dependencyKey = targetKey(dependency);
+        if (dependencyKey !== undefined && allActionKeys.has(dependencyKey)) {
+          dependencyKeys.push(dependencyKey);
+          let dependents = dependentKeysByActionKey.get(dependencyKey);
+          if (!dependents) {
+            dependents = [];
+            dependentKeysByActionKey.set(dependencyKey, dependents);
+          }
+          dependents.push(key);
         }
       });
+      dependencyKeysByActionKey.set(key, dependencyKeys);
+    });
   }
 
   // Compute all transitive dependencies.
@@ -131,14 +129,8 @@ function computeIncludedActionKeys(
     const queue = [...includedActionKeys];
     while (queue.length > 0) {
       const actionKey = queue.pop();
-      const action = allActionsByKey.get(actionKey);
-      (action?.dependencyTargets || []).forEach((dependency) => {
-        const dependencyKey = targetKey(dependency);
-        if (
-          dependencyKey !== undefined &&
-          allActionKeys.has(dependencyKey) &&
-          !includedActionKeys.has(dependencyKey)
-        ) {
+      (dependencyKeysByActionKey.get(actionKey) || []).forEach((dependencyKey) => {
+        if (!includedActionKeys.has(dependencyKey)) {
           queue.push(dependencyKey);
           includedActionKeys.add(dependencyKey);
         }
@@ -151,20 +143,14 @@ function computeIncludedActionKeys(
     const queue = [...includedActionKeys];
     while (queue.length > 0) {
       const actionKey = queue.pop();
-      allActions.forEach((compileAction) => {
-        const dependsOnAction = compileAction.dependencyTargets?.some(
-          (dependency) => targetKey(dependency) === actionKey,
-        );
-        if (dependsOnAction) {
-          const dependentKey = targetKey(compileAction.target);
-          if (dependentKey !== undefined && !includedActionKeys.has(dependentKey)) {
-            queue.push(dependentKey);
-            includedActionKeys.add(dependentKey);
-          }
+      (dependentKeysByActionKey.get(actionKey) || []).forEach((dependentKey) => {
+        if (!includedActionKeys.has(dependentKey)) {
+          queue.push(dependentKey);
+          includedActionKeys.add(dependentKey);
         }
       });
     }
   }
 
-  return includedActionKeys;
+  return { includedActionKeys, keyByAction };
 }

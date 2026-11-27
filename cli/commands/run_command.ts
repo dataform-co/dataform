@@ -125,10 +125,7 @@ export function createExecutedGraphPrinter(
       if (alreadyPrintedActions.has(targetKey)) {
         continue;
       }
-      const executionAction = actionsByTarget.get(targetKey);
-      if (executionAction) {
-        printExecutedAction(executedAction, executionAction, dryRun);
-      }
+      printExecutedAction(executedAction, actionsByTarget.get(targetKey), dryRun);
       alreadyPrintedActions.add(targetKey);
     }
   };
