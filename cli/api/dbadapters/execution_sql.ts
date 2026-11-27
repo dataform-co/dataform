@@ -394,13 +394,13 @@ SET dataform_columns_removed = (
 );`;
   }
 
-  private applySchemaChangeStrategySql(
+  private validateSchemaChangeStrategySql(
     table: dataform.ITable,
     qualifiedTargetTableName: string,
   ): string {
     const onSchemaChange = table.onSchemaChange || dataform.OnSchemaChange.IGNORE;
     let sql = `
--- Apply schema change strategy (${dataform.OnSchemaChange[onSchemaChange]}).`;
+-- Validate schema change strategy (${dataform.OnSchemaChange[onSchemaChange]}).`;
 
     switch (onSchemaChange) {
       case dataform.OnSchemaChange.FAIL:
@@ -411,8 +411,7 @@ IF ARRAY_LENGTH(dataform_columns_added) > 0 OR ARRAY_LENGTH(dataform_columns_rem
     dataform_columns_added,
     dataform_columns_removed
   );
-END IF;
-`;
+END IF;`;
         break;
       case dataform.OnSchemaChange.EXTEND:
         sql += `
@@ -421,10 +420,7 @@ IF ARRAY_LENGTH(dataform_columns_removed) > 0 THEN
     "Column removals are not allowed when on_schema_change = 'EXTEND'. Removed columns: %T",
     dataform_columns_removed
   );
-END IF;
-
-${this.alterTableAddColumnsSql(qualifiedTargetTableName)}
-`;
+END IF;`;
         break;
       case dataform.OnSchemaChange.SYNCHRONIZE:
         const uniqueKeyColumnNames = this.normalizeUniqueKeyColumnNames(table.uniqueKey);
@@ -438,8 +434,23 @@ IF ARRAY_LENGTH(dataform_invalid_removed_columns) > 0 THEN
     "Cannot drop columns %T as they are part of the unique key for table ${qualifiedTargetTableName}",
     dataform_invalid_removed_columns
   );
-END IF;
+END IF;`;
+        break;
+    }
+    return sql;
+  }
 
+  private applySchemaChangesSql(
+    table: dataform.ITable,
+    qualifiedTargetTableName: string,
+  ): string | undefined {
+    const onSchemaChange = table.onSchemaChange || dataform.OnSchemaChange.IGNORE;
+    const comment = `-- Apply schema changes (${dataform.OnSchemaChange[onSchemaChange]}).`;
+    switch (onSchemaChange) {
+      case dataform.OnSchemaChange.EXTEND:
+        return `${comment}\n${this.alterTableAddColumnsSql(qualifiedTargetTableName)}`;
+      case dataform.OnSchemaChange.SYNCHRONIZE:
+        return `${comment}
 IF ARRAY_LENGTH(dataform_columns_removed) > 0 THEN
   EXECUTE IMMEDIATE (
     "ALTER TABLE ${qualifiedTargetTableName} " ||
@@ -450,11 +461,10 @@ IF ARRAY_LENGTH(dataform_columns_removed) > 0 THEN
   );
 END IF;
 
-${this.alterTableAddColumnsSql(qualifiedTargetTableName)}
-`;
-        break;
+${this.alterTableAddColumnsSql(qualifiedTargetTableName)}`;
+      default:
+        return undefined;
     }
-    return sql;
   }
 
   /**
@@ -491,8 +501,7 @@ END IF;`;
   }
 
   private prepareDynamicColumnsSql(table: dataform.ITable): string {
-    let sql = `
--- Prepare dynamic column lists for DML.
+    let sql = `-- Prepare dynamic column lists for DML.
 SET dataform_columns_list = (
   SELECT STRING_AGG(FORMAT("\`%s\`", column_info.column_name), ", ")
   FROM UNNEST(dataform_temp_table_columns) AS column_info
@@ -527,12 +536,25 @@ DROP TABLE IF EXISTS ${emptyTempTableName};
     const query = this.getIncrementalQuery(table);
     const coreBody = [
       this.declareSchemaChangeVariablesSql(table),
+      // Create a throwaway empty table to validate the new schema
       this.createEmptyTempTableSql(emptyTempTableName, query),
       this.compareSchemasSql(table.target, emptyTempTableTarget),
       this.cleanupSql(emptyTempTableName),
-      this.applySchemaChangeStrategySql(table, qualifiedTargetTableName),
-      this.prepareDynamicColumnsSql(table),
-      this.getIncrementalDmlStatement(table),
+      // Check that the new schema is permitted under the onSchemaChange policy
+      this.validateSchemaChangeStrategySql(table, qualifiedTargetTableName),
+      // Before altering the real table, build a staging table containing the new rows
+      // Any runtime failures in the SELECT statement will prevent the script from
+      // proceeding with the schema change
+      // If the insert/merge operation itself fails, the schema change will remain applied
+      this.withTempStagingTable(query, (stagingTable) =>
+        [
+          this.applySchemaChangesSql(table, qualifiedTargetTableName),
+          this.prepareDynamicColumnsSql(table),
+          this.getDynamicIncrementalDmlStatement(table, stagingTable),
+        ]
+          .filter((part): part is string => Boolean(part))
+          .join("\n\n"),
+      ),
     ].join("\n\n");
 
     const preOpsSql = terminateStatements(preOpTasks.map((t) => t.getStatement()));
@@ -689,44 +711,37 @@ END;`;
     return columns ? resolvedTarget : this.escapeSqlString(resolvedTarget);
   }
 
-  private getIncrementalDmlStatement(table: dataform.ITable, columns?: string[]): string {
+  private getIncrementalDmlStatement(table: dataform.ITable, columns: string[]): string {
+    const incrementalQuery = this.getIncrementalQuery(table);
     switch (table.incrementalStrategy) {
       case dataform.IncrementalStrategy.INSERT_OVERWRITE:
-        return this.withTempStagingTable(this.getIncrementalQuery(table), (stagingTable) =>
+        return this.withTempStagingTable(incrementalQuery, (stagingTable) =>
           this.insertOverwrite(table.target, columns, stagingTable, table.bigquery),
         );
       case dataform.IncrementalStrategy.MERGE:
       default:
         return this.isMergeStrategy(table)
-          ? this.getMergeIncrementalDmlStatement(table, columns)
-          : this.getInsertIncrementalDmlStatement(table, columns);
+          ? this.mergeInto(
+              table.target,
+              columns,
+              `(${incrementalQuery}\n)`,
+              table.uniqueKey,
+              table.bigquery,
+            )
+          : this.insertInto(table.target, columns, `(${incrementalQuery}\n) as insertions`);
     }
   }
 
-  private getMergeIncrementalDmlStatement(table: dataform.ITable, columns?: string[]): string {
-    const incrementalQuery = this.getIncrementalQuery(table);
-    if (!columns) {
-      return this.withTempStagingTable(incrementalQuery, (stagingTable) =>
-        this.mergeInto(table.target, undefined, stagingTable, table.uniqueKey, table.bigquery),
-      );
+  private getDynamicIncrementalDmlStatement(table: dataform.ITable, stagingTable: string): string {
+    switch (table.incrementalStrategy) {
+      case dataform.IncrementalStrategy.INSERT_OVERWRITE:
+        return this.insertOverwrite(table.target, undefined, stagingTable, table.bigquery);
+      case dataform.IncrementalStrategy.MERGE:
+      default:
+        return this.isMergeStrategy(table)
+          ? this.mergeInto(table.target, undefined, stagingTable, table.uniqueKey, table.bigquery)
+          : this.insertInto(table.target, undefined, stagingTable);
     }
-    return this.mergeInto(
-      table.target,
-      columns,
-      `(${incrementalQuery}\n)`,
-      table.uniqueKey,
-      table.bigquery,
-    );
-  }
-
-  private getInsertIncrementalDmlStatement(table: dataform.ITable, columns?: string[]): string {
-    const incrementalQuery = this.getIncrementalQuery(table);
-    if (!columns) {
-      return this.withTempStagingTable(incrementalQuery, (stagingTable) =>
-        this.insertInto(table.target, undefined, stagingTable),
-      );
-    }
-    return this.insertInto(table.target, columns, `(${incrementalQuery}\n) as insertions`);
   }
 }
 
