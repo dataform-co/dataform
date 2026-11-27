@@ -90,25 +90,25 @@ export function createImpersonatedClient(
 
 /**
  * Returns a client that impersonates `credentials.impersonateServiceAccount`, or undefined if it
- * isn't set. The service account key in `credentials.credentials`, or Application Default
- * Credentials if it's empty, is used as the source credentials.
+ * isn't set. `sourceClient`, the service account key in `credentials.credentials`, or Application
+ * Default Credentials if both are empty, is used as the source credentials.
  */
 export function createAuthClient(
   credentials: dataform.IBigQuery,
   extraScopes: readonly string[] = [],
+  sourceClient?: AuthClient,
 ): AuthClient | undefined {
   if (!credentials.impersonateServiceAccount) {
     return undefined;
   }
-  const sourceAuth = new GoogleAuth({
-    credentials: credentials.credentials && JSON.parse(credentials.credentials),
-    scopes: [CLOUD_PLATFORM_SCOPE],
-  });
-  return createImpersonatedClient(
-    credentials.impersonateServiceAccount,
-    new DeferredAuthClient(() => sourceAuth.getClient()),
-    extraScopes,
-  );
+  if (!sourceClient) {
+    const sourceAuth = new GoogleAuth({
+      credentials: credentials.credentials && JSON.parse(credentials.credentials),
+      scopes: [CLOUD_PLATFORM_SCOPE],
+    });
+    sourceClient = new DeferredAuthClient(() => sourceAuth.getClient());
+  }
+  return createImpersonatedClient(credentials.impersonateServiceAccount, sourceClient, extraScopes);
 }
 
 /**
@@ -135,10 +135,11 @@ export function getBigQueryClientOptions(
 
 export function createBigQueryClientProvider(
   credentials: dataform.IBigQuery,
+  sourceClient?: AuthClient,
 ): BigQueryClientProvider {
   const clients = new Map<string, BigQuery>();
   // Shared by the clients of all projects, so that they reuse the same impersonated token.
-  const authClient = createAuthClient(credentials, BIGQUERY_EXTRA_SCOPES);
+  const authClient = createAuthClient(credentials, BIGQUERY_EXTRA_SCOPES, sourceClient);
   return (projectId?: string) => {
     projectId = projectId || credentials.projectId;
     if (!clients.has(projectId)) {

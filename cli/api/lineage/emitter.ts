@@ -1,4 +1,5 @@
 import { LineageClient } from "@google-cloud/lineage";
+import { AuthClient } from "google-auth-library";
 import * as protobuf from "protobufjs";
 
 import { createAuthClient } from "df/cli/api/dbadapters/bigquery";
@@ -54,10 +55,11 @@ export const LINEAGE_CLIENT_INFO_BYTES = Buffer.from(
 
 export function createLineageClientProvider(
   credentials: dataform.IBigQuery,
+  sourceClient?: AuthClient,
 ): LineageClientProvider {
   const clients = new Map<string, LineageClient>();
   // Impersonates the same service account as the BigQuery adapter without requesting its Drive scope.
-  const authClient = createAuthClient(credentials);
+  const authClient = createAuthClient(credentials, [], sourceClient);
   return (projectId: string, endpoint: string) => {
     const targetProjectId = projectId || credentials.projectId;
     const cacheKey = `${targetProjectId}::${endpoint}`;
