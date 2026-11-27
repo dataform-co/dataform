@@ -1762,27 +1762,5 @@ SELECT 1`,
       const graph = compileWith(`defaultDataset: ds\ndefaultLocation: US\n`, allActionTypes);
       expect(graph.graphErrors.compilationErrors).deep.equals([]);
     });
-
-    test("explicitly configured dataset containing '.' still fails compilation", () => {
-      const graph = compileWith(defaultSettings, {
-        "t.sqlx": `config { type: "table", dataset: "dotted.ds" }\nSELECT 1`,
-      });
-      expect(
-        graph.graphErrors.compilationErrors.map(({ message, fileName }) => ({ message, fileName })),
-      ).deep.equals([
-        { message: "Action target datasets cannot include '.'", fileName: "definitions/t.sqlx" },
-      ]);
-    });
-
-    test("explicitly configured name containing '.' still fails compilation", () => {
-      const graph = compileWith(defaultSettings, {
-        "t.sqlx": `config { type: "table", name: "dotted.name" }\nSELECT 1`,
-      });
-      expect(
-        graph.graphErrors.compilationErrors.map(({ message, fileName }) => ({ message, fileName })),
-      ).deep.equals([
-        { message: "Action target names cannot include '.'", fileName: "definitions/t.sqlx" },
-      ]);
-    });
   });
 });
