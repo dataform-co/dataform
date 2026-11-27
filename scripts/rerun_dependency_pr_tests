@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """Re-runs the tests of dependency PRs once their new versions are available.
 
-PRs from Dependabot (dependabot/* branches) and from the Security updates and
-Toolchain updates workflows (deps/security-updates, deps/toolchain-updates) are
-tested by a Cloud Build push trigger. Their tests
+PRs from Dependabot (dependabot/* branches) and from the security updates job
+(deps/security-updates) are tested by a Cloud Build push trigger. Their tests
 often fail at first because new package versions become installable in the
 registry used by CI only some time after they are published. For each such
 open PR, this script checks every package version that the PR adds to
@@ -36,7 +35,7 @@ import urllib.request
 REPO = os.environ.get("GITHUB_REPO", "dataform-co/dataform")
 MAX_RUNS = int(os.environ.get("MAX_RUNS", "3"))
 DRY_RUN = os.environ.get("DRY_RUN", "").lower() in ("1", "true")
-BOT_BRANCH = re.compile(r"^(dependabot/.*|deps/security-updates|deps/toolchain-updates)$")
+BOT_BRANCH = re.compile(r"^(dependabot/.*|deps/security-updates)$")
 NAME = re.compile(r"^(@[a-z0-9][a-z0-9._-]*/)?[a-z0-9][a-z0-9._-]*$")
 VERSION = re.compile(r"^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$")
 
