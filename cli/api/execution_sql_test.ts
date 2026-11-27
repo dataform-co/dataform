@@ -335,6 +335,44 @@ suite("ExecutionSql with 'onSchemaChange'", () => {
       expect(declaredVariable).to.match(/^dataform_/);
     }
   });
+
+  test("extracts lowercased top-level column names from uniqueKey entries in SYNCHRONIZE drop guard while keeping MERGE ON keys intact", () => {
+    const table: dataform.ITable = {
+      ...baseTable,
+      onSchemaChange: dataform.OnSchemaChange.SYNCHRONIZE,
+      uniqueKey: [
+        "`My-Id`",
+        " `First Name` ",
+        "`X`",
+        "`My-Rec`.`sub-id`",
+        "`my-rec`.other",
+        "Other_Rec.`sub-id`",
+        "SAFE.PARSE_DATE('%Y', dt)",
+        "`",
+        "``",
+        "Plain_Id",
+      ],
+    };
+    const fullSql = executionSql
+      .publishTasks(table, { fullRefresh: false }, tableMetadata)
+      .build()[0].statement;
+
+    expect(fullSql).to.include(
+      `WHERE LOWER(col) IN UNNEST(["my-id","first name","x","my-rec","other_rec","safe.parse_date('%y', dt)","\`","\`\`","plain_id"])`,
+    );
+    expect(fullSql).to.include(
+      "on DATAFORM_DEST.`My-Id` = DATAFORM_SOURCE.`My-Id` " +
+        "and DATAFORM_DEST. `First Name`  = DATAFORM_SOURCE. `First Name`  " +
+        "and DATAFORM_DEST.`X` = DATAFORM_SOURCE.`X` " +
+        "and DATAFORM_DEST.`My-Rec`.`sub-id` = DATAFORM_SOURCE.`My-Rec`.`sub-id` " +
+        "and DATAFORM_DEST.`my-rec`.other = DATAFORM_SOURCE.`my-rec`.other " +
+        "and DATAFORM_DEST.Other_Rec.`sub-id` = DATAFORM_SOURCE.Other_Rec.`sub-id` " +
+        "and DATAFORM_DEST.SAFE.PARSE_DATE('%Y', dt) = DATAFORM_SOURCE.SAFE.PARSE_DATE('%Y', dt) " +
+        "and DATAFORM_DEST.` = DATAFORM_SOURCE.` " +
+        "and DATAFORM_DEST.`` = DATAFORM_SOURCE.`` " +
+        "and DATAFORM_DEST.Plain_Id = DATAFORM_SOURCE.Plain_Id",
+    );
+  });
 });
 
 suite("ExecutionSql for property graphs", () => {

@@ -2,7 +2,7 @@ import { expect } from "chai";
 import Long from "long";
 import { anything, capture, instance, mock, verify, when } from "ts-mockito";
 
-import { handleDbRequest } from "df/cli/api/commands/jit/rpc";
+import { handleDbRequest, rpcErrorMessage } from "df/cli/api/commands/jit/rpc";
 import { IDbAdapter, IDbClient } from "df/cli/api/dbadapters";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
@@ -556,5 +556,72 @@ suite("jit_rpc", () => {
     expect(nestedFList[0].structValue.fields.v.stringValue).equals("nested_val");
     expect(decoded.schemaFields.length).equals(1);
     expect(decoded.schemaFields[0].name).equals("complex_struct");
+  });
+
+  async function captureExecuteRawOptions(executeRequest: dataform.IExecuteRequest) {
+    const mockAdapter = mock<IDbAdapter>();
+    const mockClient = mock<IDbClient>();
+    when(mockClient.executeRaw(anything(), anything())).thenResolve({
+      rows: [],
+      schema: [],
+      metadata: {},
+    });
+
+    await handleDbRequest(
+      instance(mockAdapter),
+      instance(mockClient),
+      "Execute",
+      dataform.ExecuteRequest.encode(dataform.ExecuteRequest.create(executeRequest)).finish(),
+    );
+
+    return capture(mockClient.executeRaw).last()[1];
+  }
+
+  test("Execute RPC forwards rowLimit and byteLimit", async () => {
+    const options = await captureExecuteRawOptions({
+      statement: "SELECT 1",
+      rowLimit: Long.fromNumber(100),
+      byteLimit: Long.fromNumber(1024),
+    });
+
+    expect(options.rowLimit).equals(100);
+    expect(options.maximumBytesBilled).equals(1024);
+  });
+
+  test("Execute RPC requests no limits when rowLimit and byteLimit are unset", async () => {
+    const options = await captureExecuteRawOptions({ statement: "SELECT 1" });
+
+    expect(options.rowLimit).equals(undefined);
+    expect(options.maximumBytesBilled).equals(undefined);
+  });
+
+  test("Execute RPC treats zero limits as unset", async () => {
+    const options = await captureExecuteRawOptions({
+      statement: "SELECT 1",
+      rowLimit: Long.ZERO,
+      byteLimit: Long.ZERO,
+    });
+
+    expect(options.rowLimit).equals(undefined);
+    expect(options.maximumBytesBilled).equals(undefined);
+  });
+
+  suite("rpcErrorMessage", () => {
+    test("returns the message of an Error", () => {
+      expect(rpcErrorMessage(new Error("boom"))).equals("boom");
+    });
+
+    test("uses a fallback message when the error message is empty", () => {
+      expect(rpcErrorMessage(new Error(""))).equals(
+        "Database request failed without an error message",
+      );
+      expect(rpcErrorMessage("")).equals("Database request failed without an error message");
+    });
+
+    test("stringifies values that are not Errors", () => {
+      expect(rpcErrorMessage("boom")).equals("boom");
+      expect(rpcErrorMessage(undefined)).equals("undefined");
+      expect(rpcErrorMessage(null)).equals("null");
+    });
   });
 });

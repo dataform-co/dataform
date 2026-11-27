@@ -49,7 +49,7 @@ DROP TABLE IF EXISTS `project-id.dataset-id.incremental_on_schema_change_df_temp
 
 -- Apply schema change strategy (SYNCHRONIZE).
 SET dataform_invalid_removed_columns = (
-  SELECT IFNULL(ARRAY_AGG(col), []) FROM UNNEST(dataform_columns_removed) AS col WHERE col IN UNNEST(["id"])
+  SELECT IFNULL(ARRAY_AGG(col), []) FROM UNNEST(dataform_columns_removed) AS col WHERE LOWER(col) IN UNNEST(["id"])
 );
 
 IF ARRAY_LENGTH(dataform_invalid_removed_columns) > 0 THEN
@@ -63,7 +63,7 @@ IF ARRAY_LENGTH(dataform_columns_removed) > 0 THEN
   EXECUTE IMMEDIATE (
     "ALTER TABLE `project-id.dataset-id.incremental_on_schema_change` " ||
     (
-      SELECT STRING_AGG(FORMAT("DROP COLUMN IF EXISTS %s", col), ", ")
+      SELECT STRING_AGG(FORMAT("DROP COLUMN IF EXISTS `%s`", col), ", ")
       FROM UNNEST(dataform_columns_removed) AS col
     )
   );
@@ -73,7 +73,7 @@ IF ARRAY_LENGTH(dataform_columns_added) > 0 THEN
   EXECUTE IMMEDIATE (
     "ALTER TABLE `project-id.dataset-id.incremental_on_schema_change` " ||
     (
-      SELECT STRING_AGG(FORMAT("ADD COLUMN IF NOT EXISTS %s %s", column_info.column_name, column_info.data_type), ", ")
+      SELECT STRING_AGG(FORMAT("ADD COLUMN IF NOT EXISTS `%s` %s", column_info.column_name, column_info.data_type), ", ")
       FROM UNNEST(dataform_columns_added) AS column_info
     )
   );
