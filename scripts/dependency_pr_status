@@ -4,7 +4,10 @@
 New package versions become installable in the registry that the Cloud Build
 tests use only some time after they are published, so a PR from Dependabot or
 from the security updates job (scripts/update_vulnerable_deps) can fail there
-although the code is fine. For each such open PR, this script:
+although the code is fine. For each such open PR that updates npm packages
+(Dependabot's npm branches and deps/security-updates; Dependabot PRs for other
+ecosystems, e.g. GitHub Actions or Bazel modules, don't depend on the npm
+registry and are skipped), this script:
 
   - adds the "waiting-for-dependencies" label and a one-time comment if the
     Cloud Build checks failed but the build with the public npm registry
@@ -34,7 +37,10 @@ REPO = os.environ.get("GITHUB_REPO") or os.environ.get("GITHUB_REPOSITORY") or \
 DRY_RUN = os.environ.get("DRY_RUN", "").lower() in ("1", "true")
 MAX_WAIT_DAYS = int(os.environ.get("MAX_WAIT_DAYS", "21"))
 
-BOT_AUTHORS = {"dependabot[bot]"}
+# Dependabot PRs that update npm packages: its branches are named
+# dependabot/<ecosystem>/..., and the npm ones use "npm_and_yarn".
+DEPENDABOT = "dependabot[bot]"
+DEPENDABOT_NPM_PREFIX = "dependabot/npm_and_yarn/"
 BOT_BRANCHES = {"deps/security-updates"}
 CLOUD_BUILD_APP = "google-cloud-build"
 # Builds with the public npm registry: if it passes, the code itself is fine.
@@ -145,6 +151,17 @@ def ensure_comment(pr):
         write("POST", "/repos/%s/issues/%d/comments" % (REPO, pr["number"]), {"body": COMMENT})
 
 
+def is_npm_dependency_pr(pr):
+    """Whether a PR updates npm packages: from Dependabot's npm branches or the
+    security updates branch, in this repo."""
+    ref = pr["head"]["ref"]
+    if (pr["head"].get("repo") or {}).get("full_name") != REPO:
+        return False
+    if pr["user"]["login"] == DEPENDABOT:
+        return ref.startswith(DEPENDABOT_NPM_PREFIX)
+    return ref in BOT_BRANCHES
+
+
 def process(pr, now):
     sha = pr["head"]["sha"]
     commit = api("GET", "/repos/%s/commits/%s" % (REPO, sha))
@@ -171,9 +188,7 @@ def main():
         prs = [api("GET", "/repos/%s/pulls/%d" % (REPO, int(os.environ["PR_NUMBER"])))]
     else:
         prs = [pr for pr in api("GET", "/repos/%s/pulls?state=open&per_page=100" % REPO)
-               if pr["user"]["login"] in BOT_AUTHORS or
-               (pr["head"]["ref"] in BOT_BRANCHES and
-                (pr["head"].get("repo") or {}).get("full_name") == REPO)]
+               if is_npm_dependency_pr(pr)]
     print("%d dependency PR(s)%s" % (len(prs), " (dry run)" if DRY_RUN else ""))
     if prs:
         ensure_labels()

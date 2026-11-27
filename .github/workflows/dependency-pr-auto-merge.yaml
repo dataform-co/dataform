@@ -1,0 +1,79 @@
+name: Dependency PR auto-merge
+
+# Enables auto-merge (squash) on the open dependency PRs: the ones that
+# Dependabot opens from dependabot/* branches, and the ones that this repo's
+# GitHub App opens from the branches of the dependency workflows (DEPS_BRANCHES).
+# This doesn't approve them: a maintainer still has to review and approve each
+# PR, and GitHub then merges it as soon as the required checks pass, without
+# anyone having to come back to it.
+#
+# Uses an installation token of the repo's GitHub App (repo secrets
+# SECURITY_UPDATES_APP_ID and SECURITY_UPDATES_PRIVATE_KEY), so that the merge
+# commits trigger the workflows on main, unlike merges with GITHUB_TOKEN.
+
+on:
+  schedule:
+    - cron: "30 4 * * *" # Daily at 04:30 UTC, after Dependabot (02:00).
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: Only list the PRs that would get auto-merge enabled.
+        type: boolean
+        default: true
+
+permissions: {}
+
+concurrency:
+  group: dependency-pr-auto-merge
+  cancel-in-progress: false
+
+jobs:
+  auto-merge:
+    name: Enable auto-merge on dependency PRs
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions: {} # All API calls use the GitHub App token.
+    steps:
+      - name: Create a GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          app-id: ${{ secrets.SECURITY_UPDATES_APP_ID }}
+          private-key: ${{ secrets.SECURITY_UPDATES_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+
+      - name: Enable auto-merge
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GH_REPO: ${{ github.repository }}
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run }}
+          APP_AUTHOR: app/${{ steps.app-token.outputs.app-slug }}
+          # Branches of the Security updates and Toolchain updates workflows.
+          DEPS_BRANCHES: deps/security-updates deps/toolchain-updates
+        run: |
+          set -euo pipefail
+          # Open PRs from branches of this repo that don't have auto-merge
+          # enabled yet: dependabot/* from Dependabot, and DEPS_BRANCHES from
+          # the GitHub App.
+          prs="$(gh pr list --state open --limit 100 \
+            --json number,author,headRefName,isCrossRepository,isDraft,autoMergeRequest \
+            --jq '.[]
+              | select((.isCrossRepository | not) and (.isDraft | not) and .autoMergeRequest == null)
+              | select((.author.login == "app/dependabot" and (.headRefName | startswith("dependabot/")))
+                       or (.author.login == env.APP_AUTHOR
+                           and (.headRefName as $b | env.DEPS_BRANCHES | split(" ") | index($b))))
+              | .number')"
+          if [[ -z "${prs}" ]]; then
+            echo "No dependency PRs without auto-merge."
+            exit 0
+          fi
+          for pr in ${prs}; do
+            if [[ "${DRY_RUN}" == "true" ]]; then
+              echo "Would enable auto-merge on #${pr}"
+            elif gh pr merge "${pr}" --auto --squash; then
+              echo "Enabled auto-merge on #${pr}"
+            else
+              echo "::warning::Could not enable auto-merge on #${pr}"
+            fi
+          done
