@@ -4,7 +4,7 @@ import { init } from "df/cli/api";
 import { IProjectDirArgs, projectDirOption } from "df/cli/common_options";
 import { print, printInitResult } from "df/cli/console";
 import { ProjectConfigOptions } from "df/cli/project_config_options";
-import { promptForIcebergConfig } from "df/cli/util";
+import { promptForIcebergConfig, promptForLakehouseConfig } from "df/cli/util";
 import { ICommand, INamedOption } from "df/cli/yargswrapper";
 import { dataform } from "df/protos/ts";
 
@@ -12,12 +12,22 @@ export interface IInitArgs extends IProjectDirArgs {
   defaultDatabase: string;
   defaultLocation?: string;
   iceberg: boolean;
+  lakehouse: boolean;
 }
 
 const icebergOption: INamedOption<yargs.Options, IInitArgs> = {
   name: "iceberg",
   option: {
     describe: "Initialize the project with workflow-level Iceberg tables configuration.",
+    type: "boolean",
+    default: false,
+  },
+};
+
+const lakehouseOption: INamedOption<yargs.Options, IInitArgs> = {
+  name: "lakehouse",
+  option: {
+    describe: "Initialize the project with workflow-level Lakehouse configuration.",
     type: "boolean",
     default: false,
   },
@@ -56,7 +66,7 @@ export const initCommand: ICommand<IInitArgs> = {
     ` [${defaultLocationOption.name}]`,
   description: "Create a new dataform project.",
   positionalOptions: [projectDirOption, defaultDatabaseOption, defaultLocationOption],
-  options: [icebergOption],
+  options: [icebergOption, lakehouseOption],
   processFn: async (argv) => {
     const projectConfig: dataform.IProjectConfig = {
       defaultDatabase: argv.defaultDatabase,
@@ -68,6 +78,10 @@ export const initCommand: ICommand<IInitArgs> = {
       if (icebergConfig) {
         projectConfig.defaultIcebergConfig = icebergConfig;
       }
+    }
+
+    if (argv.lakehouse) {
+      projectConfig.defaultLakehouseConfig = promptForLakehouseConfig();
     }
 
     print("Writing project files...\n");

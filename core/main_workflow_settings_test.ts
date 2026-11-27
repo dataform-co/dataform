@@ -445,12 +445,12 @@ select 1 AS \${dataform.projectConfig.vars.columnVar}`,
           targets: [
             {
               database: "databaseVal",
-              name: "tableSchema_file_assertions_rowConditions",
+              name: "file",
               schema: "tableSchema",
             },
             {
               database: "databaseVal",
-              name: "file",
+              name: "tableSchema_file_assertions_rowConditions",
               schema: "tableSchema",
             },
           ],
