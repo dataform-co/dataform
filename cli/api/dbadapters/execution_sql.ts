@@ -14,6 +14,10 @@ export interface IValidationQuery {
   incremental?: boolean;
 }
 
+const QUOTED_TOP_LEVEL_COLUMN_REGEX = /^`([^`]+)`(?:\s*\.\s*(?:`[^`]+`|[A-Za-z_][A-Za-z0-9_]*))*$/;
+const UNQUOTED_TOP_LEVEL_COLUMN_REGEX =
+  /^([A-Za-z_][A-Za-z0-9_]*)(?:\s*\.\s*(?:`[^`]+`|[A-Za-z_][A-Za-z0-9_]*))*$/;
+
 export class ExecutionSql {
   private readonly CompilationSql: CompilationSql;
 
@@ -176,11 +180,11 @@ from ${source}`;
   ): Tasks {
     const tasks = new Tasks();
 
-    const usesSchemaChangeProcedure =
+    const usesSchemaChangeScript =
       this.shouldWriteIncrementally(table, runConfig, tableMetadata) &&
       (table.onSchemaChange ?? dataform.OnSchemaChange.IGNORE) !== dataform.OnSchemaChange.IGNORE;
 
-    if (!usesSchemaChangeProcedure) {
+    if (!usesSchemaChangeScript) {
       preOpTasks.forEach((statement) => tasks.add(statement));
     }
 
@@ -212,7 +216,7 @@ from ${source}`;
       }
     }
 
-    if (!usesSchemaChangeProcedure) {
+    if (!usesSchemaChangeScript) {
       postOpTasks.forEach((statement) => tasks.add(statement));
     }
 
@@ -303,8 +307,7 @@ from ${source}`;
       name: `${table.target.name}_df_temp_${uniqueId}_empty`,
     };
 
-    const procedureName = this.createProcedureName(table.target, uniqueId);
-    const procedureBody = this.incrementalSchemaChangeBody(
+    const body = this.incrementalSchemaChangeBody(
       table,
       this.resolveTarget(table.target),
       emptyTempTableTarget,
@@ -312,37 +315,17 @@ from ${source}`;
       postOpTasks,
     );
 
-    const createProcedureSql = `CREATE OR REPLACE PROCEDURE ${procedureName}()
-OPTIONS(strict_mode=false)
-BEGIN
-${procedureBody}
-END;`;
-
-    const callProcedureSql = this.safeCallAndDropProcedure(
-      procedureName,
-      this.resolveTarget(emptyTempTableTarget),
-    );
-    tasks.add(Task.statement(createProcedureSql));
-    tasks.add(Task.statement(callProcedureSql));
-  }
-
-  private createProcedureName(target: dataform.ITarget, uniqueId: string): string {
-    return this.resolveTarget({
-      ...target,
-      name: `df_osc_${uniqueId}`,
-    });
-  }
-
-  private safeCallAndDropProcedure(procedureName: string, emptyTempTableName: string): string {
-    return `
-BEGIN
-  CALL ${procedureName}();
+    // The body runs in its own block, so that its DECLARE statements are at the start of a block
+    // even when other statements precede it in the script, and so that the empty temp table is
+    // dropped if the body fails before reaching its own cleanup.
+    tasks.add(
+      Task.statement(`BEGIN
+${body}
 EXCEPTION WHEN ERROR THEN
-  DROP TABLE IF EXISTS ${emptyTempTableName};
-  DROP PROCEDURE IF EXISTS ${procedureName};
+  DROP TABLE IF EXISTS ${this.resolveTarget(emptyTempTableTarget)};
   RAISE;
-END;
-DROP PROCEDURE IF EXISTS ${procedureName};`;
+END;`),
+    );
   }
 
   private declareSchemaChangeVariablesSql(table: dataform.ITable): string {
@@ -440,10 +423,10 @@ ${this.alterTableAddColumnsSql(qualifiedTargetTableName)}
 `;
         break;
       case dataform.OnSchemaChange.SYNCHRONIZE:
-        const uniqueKeys = table.uniqueKey || [];
+        const uniqueKeyColumnNames = this.normalizeUniqueKeyColumnNames(table.uniqueKey);
         sql += `
 SET dataform_invalid_removed_columns = (
-  SELECT IFNULL(ARRAY_AGG(col), []) FROM UNNEST(dataform_columns_removed) AS col WHERE col IN UNNEST(${JSON.stringify(uniqueKeys)})
+  SELECT IFNULL(ARRAY_AGG(col), []) FROM UNNEST(dataform_columns_removed) AS col WHERE LOWER(col) IN UNNEST(${JSON.stringify(uniqueKeyColumnNames)})
 );
 
 IF ARRAY_LENGTH(dataform_invalid_removed_columns) > 0 THEN
@@ -457,7 +440,7 @@ IF ARRAY_LENGTH(dataform_columns_removed) > 0 THEN
   EXECUTE IMMEDIATE (
     "ALTER TABLE ${qualifiedTargetTableName} " ||
     (
-      SELECT STRING_AGG(FORMAT("DROP COLUMN IF EXISTS %s", col), ", ")
+      SELECT STRING_AGG(FORMAT("DROP COLUMN IF EXISTS \`%s\`", col), ", ")
       FROM UNNEST(dataform_columns_removed) AS col
     )
   );
@@ -470,12 +453,33 @@ ${this.alterTableAddColumnsSql(qualifiedTargetTableName)}
     return sql;
   }
 
+  /**
+   * Extracts lowercased top-level column names from `uniqueKey` entries (handling backticks and
+   * dotted struct paths such as `` "`My-Rec`.`sub-id`" `` -> `"my-rec"`) for case-insensitive
+   * matching against `INFORMATION_SCHEMA.COLUMNS`.
+   */
+  private normalizeUniqueKeyColumnNames(uniqueKeys?: string[] | null): string[] {
+    const normalized = (uniqueKeys || []).map((key) => {
+      const trimmed = key.trim();
+      const quotedTopLevel = QUOTED_TOP_LEVEL_COLUMN_REGEX.exec(trimmed);
+      if (quotedTopLevel) {
+        return quotedTopLevel[1].toLowerCase();
+      }
+      const unquotedTopLevel = UNQUOTED_TOP_LEVEL_COLUMN_REGEX.exec(trimmed);
+      if (unquotedTopLevel) {
+        return unquotedTopLevel[1].toLowerCase();
+      }
+      return trimmed.toLowerCase();
+    });
+    return Array.from(new Set(normalized));
+  }
+
   private alterTableAddColumnsSql(qualifiedTargetTableName: string): string {
     return `IF ARRAY_LENGTH(dataform_columns_added) > 0 THEN
   EXECUTE IMMEDIATE (
     "ALTER TABLE ${qualifiedTargetTableName} " ||
     (
-      SELECT STRING_AGG(FORMAT("ADD COLUMN IF NOT EXISTS %s %s", column_info.column_name, column_info.data_type), ", ")
+      SELECT STRING_AGG(FORMAT("ADD COLUMN IF NOT EXISTS \`%s\` %s", column_info.column_name, column_info.data_type), ", ")
       FROM UNNEST(dataform_columns_added) AS column_info
     )
   );
@@ -530,7 +534,7 @@ DROP TABLE IF EXISTS ${emptyTempTableName};
     const preOpsSql = terminateStatements(preOpTasks.map((t) => t.getStatement()));
     const postOpsSql = terminateStatements(postOpTasks.map((t) => t.getStatement()));
 
-    // Whenever user-provided operations share the procedure scope, the core body is wrapped in its
+    // Whenever user-provided operations share the block scope, the core body is wrapped in its
     // own block. This places its DECLARE statements at the start of a block when they follow
     // pre-operations, and takes the internal variables out of scope before post-operations run.
     // Post-operations are left unwrapped so that comment-only operations don't produce an empty

@@ -178,7 +178,7 @@ Compiles the project and prints a summary (or JSON / Graphviz DOT / Mermaid repr
 | `--quiet` | boolean | `false` | Less verbose compilation output. Mutually exclusive with --verbose. |
 | `--watch` | boolean | `false` | Watches the project directory and recompiles on changes. |
 | `--timeout` | string | `'60s'` | Duration to allow project compilation to complete, e.g. '1s', '10m'. |
-| `--output-actions` | array | — | Filters the printed output to these actions (comma-separated or repeatable). Each entry is an action name or a fully-qualified database.schema.name target. The whole project is still compiled. |
+| `--output-actions` | array | — | Filters the printed output to these actions (comma-separated or repeatable). Each entry is an action name or a fully-qualified database.schema.name target, and may include '\*' wildcards. The whole project is still compiled. |
 | `--output-tags` | array | — | Filters the printed output to actions with any of these tags (comma-separated or repeatable). |
 | `--output-include-deps` | boolean | — | Also includes upstream dependencies of the selected actions in the output. Requires --output-actions or --output-tags. |
 | `--output-include-dependents` | boolean | — | Also includes downstream dependents of the selected actions in the output. Requires --output-actions or --output-tags. |
@@ -190,7 +190,7 @@ Compiles the project and prints a summary (or JSON / Graphviz DOT / Mermaid repr
 - `--json` outputs the compiled graph and can't be combined with `--dot` or `--mermaid`.
 - `--mermaid` prints a Mermaid flowchart (using the widely supported `graph` keyword), which GitHub, GitLab and other Mermaid-enabled documentation tools render natively. To render it in Markdown, wrap the output in a `mermaid` code fence. Mermaid limits diagram size by default (500 edges and 50,000 characters; renderers can change these, and GitHub refuses diagrams over 50,000 characters), so for large projects use `--output-actions` / `--output-tags` to print part of the graph. A warning is printed to stderr when the diagram exceeds these limits. With `--watch`, each recompilation prints a new diagram (plus status messages), so the output isn't a single Mermaid document.
 - `--watch` ignores `node_modules`, recompiles with a debounce of 500ms, and runs until interrupted with Ctrl+C.
-- `--output-actions`, `--output-tags`, `--output-include-deps` and `--output-include-dependents` only prune what's printed; the whole project still compiles. `--output-actions` entries are matched exactly (no `*` wildcard expansion).
+- `--output-actions`, `--output-tags`, `--output-include-deps` and `--output-include-dependents` only prune what's printed; the whole project still compiles. `--output-actions` entries support `*` wildcards (matched against the full target when the pattern contains `.`, or the action name otherwise); an exact bare action name that matches several actions is an error.
 
 ---
 
@@ -255,7 +255,7 @@ Compiles and executes the project against BigQuery (or validates it with `--dry-
 | `--dry-run` | boolean | — | Validates the run SQL with BigQuery without applying any changes to the warehouse. |
 | `--run-tests` | boolean | — | Requires the project's unit tests to pass before executing; aborts the run if any test fails. |
 | `--action-retry-limit` | number | `0` | Retries idempotent actions up to this many times on failure. |
-| `--actions` | array | — | Actions to run (comma-separated or repeatable). Each entry is an action name or a fully-qualified database.schema.name target. |
+| `--actions` | array | — | Actions to run (comma-separated or repeatable). Each entry is an action name or a fully-qualified database.schema.name target, and may include '\*' wildcards. |
 | `--tags` | array | — | Tags to filter the actions to run (comma-separated or repeatable). |
 | `--include-deps` | boolean | — | Also runs upstream dependencies of the selected actions. Requires --actions or --tags. |
 | `--include-dependents` | boolean | — | Also runs downstream dependents of the selected actions. Requires --actions or --tags. |
@@ -275,11 +275,12 @@ Compiles and executes the project against BigQuery (or validates it with `--dry-
 
 **Notes**
 
-- `--actions` entries are matched exactly: `*` wildcards are not expanded, and a bare action name that matches several actions is an error.
+- `--actions` entries support `*` wildcards (matched against the full target when the pattern contains `.`, or the action name otherwise); an exact bare action name that matches several actions is an error.
 - `--full-refresh` only affects incremental tables; regular tables and views are always rebuilt.
 - `--timeout` bounds compilation only, not execution. If it's set without `--execution-timeout`, `run` prints a warning reminding you of that.
 - `--job-labels` override `defaultJobLabels`, action `jobLabels` and table `labels` that use the same key.
 - `--emit-lineage` requires the Data Lineage API (`datalineage.googleapis.com`) to be enabled and the `roles/datalineage.producer` role; for configuration and troubleshooting, see the [Data Lineage guide](../docs/lineage.md).
+- Queries that JiT code runs with `adapter.execute(...)` honor `rowLimit` (the maximum number of rows returned) and `byteLimit` (the maximum number of bytes billed; the query fails above it). A query without `rowLimit` returns all rows.
 
 Exit codes: `0` on success, `1` if compilation fails, a BigQuery job would get more than 64 labels (checked before any action or unit test runs), unit tests fail (with `--run-tests`), the run fails, times out, or is cancelled (Ctrl+C).
 

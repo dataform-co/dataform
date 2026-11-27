@@ -217,8 +217,9 @@ export class BigQueryDbAdapter implements IDbAdapter {
     options: {
       params?: { [name: string]: any };
       rowLimit?: number;
+      maximumBytesBilled?: number;
       bigquery?: IBigQueryExecutionOptions;
-    } = { rowLimit: 1000 },
+    } = {},
   ): Promise<IExecutionResultRaw> {
     if (!statement) {
       throw new Error("Query string cannot be empty");
@@ -226,20 +227,60 @@ export class BigQueryDbAdapter implements IDbAdapter {
     return this.pool
       .addSingleTask({
         generator: async () => {
-          const [rows, , apiResponse] = await this.getClient().query({
+          const query = {
             ...this.prepareQueryOptions(
               statement,
               options.rowLimit,
               options.bigquery,
               options.params,
             ),
+            maximumBytesBilled:
+              options.maximumBytesBilled !== undefined
+                ? String(options.maximumBytesBilled)
+                : undefined,
             skipParsing: true,
-          } as any);
-          const schema = apiResponse?.schema?.fields?.map((field: any) => convertField(field));
+          };
+          // A dry run returns no rows and its result has no next page to follow, so the row limit
+          // only applies to a real run.
+          const { rows, schemaFields } =
+            options.rowLimit && !options.bigquery?.dryRun
+              ? await this.queryRawRowsUpToLimit(query, options.rowLimit)
+              : await this.queryAllRawRows(query);
+          const schema = schemaFields?.map((field: any) => convertField(field));
           return { rows, schema, metadata: {} };
         },
       })
       .promise();
+  }
+
+  private async queryAllRawRows(query: object) {
+    const [rows, , apiResponse] = await this.getClient().query(query as any);
+    return { rows, schemaFields: apiResponse?.schema?.fields };
+  }
+
+  /**
+   * Returns at most rowLimit rows of a query.
+   *
+   * The client uses maxResults in the query only as a page size and then fetches every page.
+   * Passing maxResults as an option makes it return a single page instead. That page is empty
+   * while the query is still running and can hold fewer than rowLimit rows when the rows are
+   * large, so the next pages are requested until the limit is reached or no page is left.
+   */
+  private async queryRawRowsUpToLimit(query: object, rowLimit: number) {
+    let [pageRows, nextPage, apiResponse]: any[] = await this.getClient().query(query as any, {
+      maxResults: rowLimit,
+    });
+    let rows: any[] = pageRows;
+    let schemaFields = apiResponse?.schema?.fields;
+    while (nextPage && rows.length < rowLimit) {
+      [pageRows, nextPage, apiResponse] = await nextPage.job.getQueryResults({
+        ...nextPage,
+        maxResults: rowLimit - rows.length,
+      });
+      rows = rows.concat(pageRows);
+      schemaFields = schemaFields ?? apiResponse?.schema?.fields;
+    }
+    return { rows: rows.slice(0, rowLimit), schemaFields };
   }
 
   public async evaluate(queryOrAction: QueryOrAction) {

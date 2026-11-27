@@ -105,8 +105,8 @@ config {
           `stdout:\n${initialRunResult.stdout}\nstderr:\n${initialRunResult.stderr}`,
         ).equals(0);
 
-        // Run the incremental table in build-only mode first to verify procedural SQL structure.
-        const dryRunResult = await runCli("run", [
+        // Run the incremental table in build-only mode first to verify the structure of the SQL script.
+        const buildOnlyResult = await runCli("run", [
           projectDir,
           "--credentials",
           CREDENTIALS_PATH,
@@ -115,9 +115,23 @@ config {
           "--actions=example_incremental",
         ]);
 
-        expect(dryRunResult.exitCode).equals(0);
-        const executionGraph = JSON.parse(dryRunResult.stdout);
+        expect(buildOnlyResult.exitCode).equals(0);
+        const executionGraph = JSON.parse(buildOnlyResult.stdout);
         const statement = executionGraph.actions[0].tasks[0].statement;
+
+        // Test that the dry-run passes
+        const dryRunResult = await runCli("run", [
+          projectDir,
+          "--credentials",
+          CREDENTIALS_PATH,
+          "--dry-run",
+          "--json",
+          "--actions=example_incremental",
+        ]);
+        expect(
+          dryRunResult.exitCode,
+          `stdout:\n${dryRunResult.stdout}\nstderr:\n${dryRunResult.stderr}`,
+        ).equals(0);
 
         const expectedRunResult = {
           projectConfig: {
@@ -156,7 +170,6 @@ config {
         };
 
         expect(executionGraph).deep.equals(expectedRunResult);
-        expect(statement).to.include("CREATE OR REPLACE PROCEDURE");
         expect(statement).to.include(
           "Column removals are not allowed when on_schema_change = 'EXTEND'.",
         );
@@ -248,6 +261,76 @@ WHERE id != 1 OR field2 IS NULL OR field2 != 'synced'
           name: "example_synchronize",
         });
         expect(tableMetadata.fields.map((f) => f.name)).deep.equals(["id", "field2"]);
+      },
+    );
+
+    test(
+      "adds, merges and drops reserved-word and flexible column names and guards backticked uniqueKey",
+      { timeout: 240000 },
+      async () => {
+        const tableTarget = {
+          database: INTEGRATION_TEST_PROJECT,
+          schema: uniqueDataset,
+          name: "quoted_columns_incremental",
+        };
+        const writeAndRun = async (onSchemaChange: string, query: string) => {
+          writeDefinitionFile(
+            projectDir,
+            "quoted_columns_incremental.sqlx",
+            `
+config {
+  type: "incremental",
+  uniqueKey: ["\`My-Id\`"],
+  onSchemaChange: "${onSchemaChange}"
+}
+${query}
+`,
+          );
+          return await runCli("run", [projectDir, "--credentials", CREDENTIALS_PATH]);
+        };
+        const getColumnNames = async () =>
+          (await dbadapter.table(tableTarget)).fields.map((f) => f.name);
+        const getRows = async () =>
+          (
+            await dbadapter.execute(
+              `SELECT * FROM \`${INTEGRATION_TEST_PROJECT}.${uniqueDataset}.quoted_columns_incremental\``,
+              { bigquery: { location: INTEGRATION_TEST_LOCATION } },
+            )
+          ).rows;
+
+        const initialRun = await writeAndRun("EXTEND", "SELECT 1 AS \`my-id\`, 'v1' AS val");
+        expect(
+          initialRun.exitCode,
+          `stdout:\n${initialRun.stdout}\nstderr:\n${initialRun.stderr}`,
+        ).equals(0);
+        expect(await getColumnNames()).deep.equals(["my-id", "val"]);
+
+        const extendRun = await writeAndRun(
+          "EXTEND",
+          "SELECT 1 AS \`my-id\`, 'v2' AS val, 'ord' AS \`order\`, 'flex' AS \`my-col\`",
+        );
+        expect(
+          extendRun.exitCode,
+          `stdout:\n${extendRun.stdout}\nstderr:\n${extendRun.stderr}`,
+        ).equals(0);
+        expect(await getColumnNames()).deep.equals(["my-id", "val", "order", "my-col"]);
+        expect(await getRows()).deep.equals([
+          { "my-id": 1, val: "v2", order: "ord", "my-col": "flex" },
+        ]);
+
+        const syncRun = await writeAndRun("SYNCHRONIZE", "SELECT 1 AS \`my-id\`, 'v3' AS val");
+        expect(syncRun.exitCode, `stdout:\n${syncRun.stdout}\nstderr:\n${syncRun.stderr}`).equals(
+          0,
+        );
+        expect(await getColumnNames()).deep.equals(["my-id", "val"]);
+        expect(await getRows()).deep.equals([{ "my-id": 1, val: "v3" }]);
+
+        const dropKeyRun = await writeAndRun("SYNCHRONIZE", "SELECT 'v4' AS val");
+        expect(dropKeyRun.exitCode).equals(1);
+        expect(dropKeyRun.stderr).to.include(
+          'Cannot drop columns ["my-id"] as they are part of the unique key',
+        );
+        expect(await getColumnNames()).deep.equals(["my-id", "val"]);
       },
     );
 
