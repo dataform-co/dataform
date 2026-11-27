@@ -38,7 +38,10 @@ export interface IDbClient {
     statement: string,
     options?: {
       params?: { [name: string]: any };
+      /** Maximum number of rows to return. All rows are returned when unset. */
       rowLimit?: number;
+      /** Maximum number of bytes the query may bill. The query fails above it. */
+      maximumBytesBilled?: number;
       bigquery?: {
         labels?: { [label: string]: string };
         location?: string;

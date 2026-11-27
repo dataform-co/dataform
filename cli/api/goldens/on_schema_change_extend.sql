@@ -1,5 +1,3 @@
-CREATE OR REPLACE PROCEDURE `project-id.dataset-id.df_osc_test_uuid`()
-OPTIONS(strict_mode=false)
 BEGIN
 
 -- Declare variables for schema comparison and strategy execution.
@@ -59,7 +57,7 @@ IF ARRAY_LENGTH(dataform_columns_added) > 0 THEN
   EXECUTE IMMEDIATE (
     "ALTER TABLE `project-id.dataset-id.incremental_on_schema_change` " ||
     (
-      SELECT STRING_AGG(FORMAT("ADD COLUMN IF NOT EXISTS %s %s", column_info.column_name, column_info.data_type), ", ")
+      SELECT STRING_AGG(FORMAT("ADD COLUMN IF NOT EXISTS `%s` %s", column_info.column_name, column_info.data_type), ", ")
       FROM UNNEST(dataform_columns_added) AS column_info
     )
   );
@@ -85,12 +83,7 @@ from `staging_table_temp_test_uuid`""");
 
 -- Cleanup staging table
 DROP TABLE IF EXISTS `staging_table_temp_test_uuid`;
-END;
-BEGIN
-  CALL `project-id.dataset-id.df_osc_test_uuid`();
 EXCEPTION WHEN ERROR THEN
   DROP TABLE IF EXISTS `project-id.dataset-id.incremental_on_schema_change_df_temp_test_uuid_empty`;
-  DROP PROCEDURE IF EXISTS `project-id.dataset-id.df_osc_test_uuid`;
   RAISE;
 END;
-DROP PROCEDURE IF EXISTS `project-id.dataset-id.df_osc_test_uuid`;

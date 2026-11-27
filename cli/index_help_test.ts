@@ -27,6 +27,10 @@ suite("help command", () => {
     expect(output).to.include(
       "Initialize the project with workflow-level Iceberg tables configuration.",
     );
+    expect(output).to.include("--lakehouse");
+    expect(output).to.include(
+      "Initialize the project with workflow-level Lakehouse configuration.",
+    );
   });
 
   test("shows help for 'install' command", async () => {
@@ -81,6 +85,7 @@ suite("help command", () => {
     expect(output).to.include("--action-retry-limit");
     expect(output).to.include("--actions");
     expect(output).to.include("--full-refresh");
+    expect(output).to.include("--override-protected");
     expect(output).to.include("--include-deps");
     expect(output).to.include("--include-dependents");
     expect(output).to.include("--tags");

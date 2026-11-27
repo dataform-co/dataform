@@ -89,9 +89,20 @@ export function interactiveQuestion(questionText: string): string {
   return readlineSync.question("");
 }
 
+const testInputUsageCounts = new Map<string, number>();
+let lastTestInputsEnvVar: string | undefined;
+
+/** Resets consumed test-input counters between in-process unit tests. */
+export function resetTestInputState(): void {
+  testInputUsageCounts.clear();
+  lastTestInputsEnvVar = undefined;
+}
+
 /**
  * Helper function to enable testing interactive CLI. Retrieves testInput from
- * the DATAFORM_CLI_TEST_INPUTS environment variable.
+ * the DATAFORM_CLI_TEST_INPUTS environment variable. Supports both a single
+ * string value and an array of sequential string values per question (for
+ * testing validation retries without looping infinitely).
  * @param questionText The exact question text displayed to the user.
  * @returns Test input for the provided question.
  */
@@ -100,22 +111,35 @@ function getTestInput(questionText: string): string {
   if (!envVar) {
     throw new Error("Environment variable DATAFORM_CLI_TEST_INPUTS not set.");
   }
-
+  if (envVar !== lastTestInputsEnvVar) {
+    testInputUsageCounts.clear();
+    lastTestInputsEnvVar = envVar;
+  }
   try {
     const parsed = JSON.parse(envVar);
     if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
-      const inputs = new Map<string, string>(
-        Object.entries(parsed).map(([key, value]) => [key, String(value)]),
-      );
+      const inputs = new Map<string, unknown>(Object.entries(parsed));
       const trimmedQuestion = questionText.trim();
-      const answer = inputs.get(trimmedQuestion);
-
-      if (answer !== undefined) {
-        print(`[TEST_INPUT for "${trimmedQuestion}"]: "${answer}"`);
-        return answer;
-      } else {
+      if (!inputs.has(trimmedQuestion)) {
         throw new Error(`[MISSING TEST_INPUT for "${trimmedQuestion}"]`);
       }
+      const rawValue = inputs.get(trimmedQuestion);
+      const usageCount = testInputUsageCounts.get(trimmedQuestion) ?? 0;
+      let answer: string;
+      if (Array.isArray(rawValue)) {
+        if (usageCount >= rawValue.length) {
+          throw new Error(`[EXHAUSTED TEST_INPUT for "${trimmedQuestion}"]`);
+        }
+        answer = String(rawValue[usageCount]);
+      } else {
+        if (usageCount > 0) {
+          throw new Error(`[EXHAUSTED TEST_INPUT for "${trimmedQuestion}"]`);
+        }
+        answer = String(rawValue);
+      }
+      testInputUsageCounts.set(trimmedQuestion, usageCount + 1);
+      print(`[TEST_INPUT for "${trimmedQuestion}"]: "${answer}"`);
+      return answer;
     } else {
       throw new Error(
         `Failed to parse DATAFORM_CLI_TEST_INPUTS: Expected a JSON object, but got ${typeof parsed}.`,

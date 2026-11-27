@@ -155,4 +155,32 @@ integrationSuite("@dataform/integration/bigquery", { parallel: true }, ({ before
     expect(inTestSchema(partialSearch).length).equals(2);
     expect(columnSearch.length).greaterThan(0);
   });
+
+  suite("executeRaw", { parallel: true }, () => {
+    const fiveRowsQuery = "SELECT x FROM UNNEST(GENERATE_ARRAY(1, 5)) AS x ORDER BY x";
+    const rowValues = (rows: any[]) => rows.map((row) => row.f[0].v);
+
+    test("returns at most rowLimit rows together with the schema", async () => {
+      const result = await dbadapter.executeRaw(fiveRowsQuery, { rowLimit: 2 });
+
+      expect(rowValues(result.rows)).eql(["1", "2"]);
+      expect(result.schema.map((field) => field.name)).eql(["x"]);
+    });
+
+    test("returns rowLimit rows when they do not fit in the first page", async () => {
+      // Each row is about 1 MB and a page holds about 10 MB.
+      const largeRowsQuery =
+        "SELECT x, REPEAT('x', 1000000) AS s FROM UNNEST(GENERATE_ARRAY(1, 15)) AS x ORDER BY x";
+
+      const result = await dbadapter.executeRaw(largeRowsQuery, { rowLimit: 12 });
+
+      expect(rowValues(result.rows)).eql(Array.from({ length: 12 }, (_, i) => String(i + 1)));
+    });
+
+    test("returns all rows when rowLimit is unset", async () => {
+      const result = await dbadapter.executeRaw(fiveRowsQuery);
+
+      expect(rowValues(result.rows)).eql(["1", "2", "3", "4", "5"]);
+    });
+  });
 });
