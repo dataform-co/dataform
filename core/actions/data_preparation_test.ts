@@ -1174,5 +1174,132 @@ namePrefix: tablePrefix
         },
       ]);
     });
+
+    test("compiles uppercase .YAML, .DP.YAML and required .DP.SQLX data preparations", () => {
+      const projectDir = createSimpleDataPreparationProject(VALID_WORKFLOW_SETTINGS_YAML, false);
+      const yamlContent = `
+nodes:
+- id: node1
+  destination:
+    table:
+      project: dest_proj
+      dataset: dest_ds
+      table: dest_tbl
+`;
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/actions.yaml"),
+        `
+actions:
+- dataPreparation:
+    filename: upper_single.YAML
+- dataPreparation:
+    filename: upper_double.DP.YAML`,
+      );
+      fs.writeFileSync(path.join(projectDir, "definitions/upper_single.YAML"), yamlContent);
+      fs.writeFileSync(path.join(projectDir, "definitions/upper_double.DP.YAML"), "\n");
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/upper_sqlx.DP.SQLX"),
+        `config { type: "dataPreparation" }\nFROM x\n|> SELECT *\n`,
+      );
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/load_upper_sqlx.js"),
+        `require("./upper_sqlx.DP.SQLX");\n`,
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.dataPreparations)).deep.equals(
+        asPlainObject([
+          {
+            target: {
+              database: "dest_proj",
+              schema: "dest_ds",
+              name: "dest_tbl",
+            },
+            canonicalTarget: {
+              database: "dest_proj",
+              schema: "dest_ds",
+              name: "dest_tbl",
+            },
+            targets: [
+              {
+                database: "dest_proj",
+                schema: "dest_ds",
+                name: "dest_tbl",
+              },
+            ],
+            canonicalTargets: [
+              {
+                database: "dest_proj",
+                schema: "dest_ds",
+                name: "dest_tbl",
+              },
+            ],
+            fileName: "definitions/upper_single.YAML",
+            dataPreparationYaml: dumpYaml(loadYaml(yamlContent)),
+          },
+          {
+            target: {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "upper_double",
+            },
+            canonicalTarget: {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "upper_double",
+            },
+            targets: [
+              {
+                database: "defaultProject",
+                schema: "defaultDataset",
+                name: "upper_double",
+              },
+            ],
+            canonicalTargets: [
+              {
+                database: "defaultProject",
+                schema: "defaultDataset",
+                name: "upper_double",
+              },
+            ],
+            fileName: "definitions/upper_double.DP.YAML",
+            dataPreparationYaml: "",
+          },
+          {
+            target: {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "upper_sqlx",
+            },
+            canonicalTarget: {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "upper_sqlx",
+            },
+            targets: [
+              {
+                database: "defaultProject",
+                schema: "defaultDataset",
+                name: "upper_sqlx",
+              },
+            ],
+            canonicalTargets: [
+              {
+                database: "defaultProject",
+                schema: "defaultDataset",
+                name: "upper_sqlx",
+              },
+            ],
+            fileName: "definitions/upper_sqlx.DP.SQLX",
+            load: {
+              replace: {},
+            },
+            query: "FROM x\n|> SELECT *",
+          },
+        ]),
+      );
+    });
   });
 });

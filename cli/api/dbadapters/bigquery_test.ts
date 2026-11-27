@@ -1,10 +1,10 @@
 import { BigQuery, Dataset, Table, TableField, TableMetadata } from "@google-cloud/bigquery";
 import { expect } from "chai";
-import { EventEmitter } from "events";
-import { AuthClient, gaxios, Impersonated } from "google-auth-library";
+import { Impersonated } from "google-auth-library";
 import { anything, instance, mock, when } from "ts-mockito";
 
 import {
+  BIGQUERY_EXTRA_SCOPES,
   BigQueryDbAdapter,
   createAuthClient,
   createBigQueryClientProvider,
@@ -12,6 +12,7 @@ import {
   DeferredAuthClient,
   getBigQueryClientOptions,
 } from "df/cli/api/dbadapters/bigquery";
+import { FakeSourceClient } from "df/cli/api/testing/fake_source_client";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 
@@ -54,26 +55,6 @@ async function setMetadataAndCaptureSchema(
   return capturedSchema;
 }
 
-/** A source AuthClient that records its requests and answers them with an impersonated token. */
-class FakeSourceClient extends AuthClient {
-  public readonly requests: gaxios.GaxiosOptions[] = [];
-
-  public async getAccessToken() {
-    return { token: "source-token" };
-  }
-
-  public async getRequestHeaders() {
-    return new Headers({ authorization: "Bearer source-token" });
-  }
-
-  public async request<T>(options: gaxios.GaxiosOptions): gaxios.GaxiosPromise<T> {
-    this.requests.push(options);
-    return {
-      data: { accessToken: "impersonated-token", expireTime: "2099-01-01T00:00:00Z" },
-    } as any;
-  }
-}
-
 suite("BigQueryDbAdapter", () => {
   suite("getBigQueryClientOptions", () => {
     test("passes the parsed service account key to the client", () => {
@@ -95,6 +76,7 @@ suite("BigQueryDbAdapter", () => {
       expect(options).to.deep.include({
         projectId: "target-project-id",
         location: "EU",
+        scopes: ["https://www.googleapis.com/auth/drive.readonly"],
         credentials: serviceAccountKey,
       });
     });
@@ -107,6 +89,7 @@ suite("BigQueryDbAdapter", () => {
         createAuthClient(credentials),
       );
       expect(options).to.deep.include({ projectId: "adc-project-id", location: "US" });
+      expect(options.scopes).to.deep.equal(["https://www.googleapis.com/auth/drive.readonly"]);
       expect(Boolean(options.credentials)).to.equal(false);
       expect(options.authClient).to.equal(undefined);
     });
@@ -154,6 +137,14 @@ suite("BigQueryDbAdapter", () => {
           credentials: "{not-valid-json",
         }),
       ).to.throw(SyntaxError);
+      expect(() =>
+        createAuthClient({
+          projectId: "target-project-id",
+          location: "US",
+          credentials: "{not-valid-json",
+          impersonateServiceAccount: TARGET_SERVICE_ACCOUNT,
+        }),
+      ).to.throw(SyntaxError);
     });
   });
 
@@ -164,17 +155,24 @@ suite("BigQueryDbAdapter", () => {
     const defaultClient = clientProvider();
     expect(defaultClient.projectId).to.equal("default-project");
     expect(defaultClient.location).to.equal("EU");
+    // google-auth-library marks scopes private on GoogleAuth.
+    expect((defaultClient.authClient as unknown as { scopes: string[] }).scopes).to.deep.equal([
+      "https://www.googleapis.com/auth/bigquery",
+      "https://www.googleapis.com/auth/drive.readonly",
+    ]);
     expect(clientProvider()).to.equal(defaultClient);
     expect(clientProvider("other-project").projectId).to.equal("other-project");
   });
 
   test("createBigQueryClientProvider shares one impersonated auth client between projects", async () => {
+    const sourceClient = new FakeSourceClient();
     const clientProvider = createBigQueryClientProvider(
       dataform.BigQuery.create({
         projectId: "default-project",
         location: "US",
         impersonateServiceAccount: TARGET_SERVICE_ACCOUNT,
       }),
+      sourceClient,
     );
     const defaultAuthClient = await clientProvider().authClient.getClient();
     expect(defaultAuthClient).to.be.instanceOf(Impersonated);
@@ -184,6 +182,21 @@ suite("BigQueryDbAdapter", () => {
     expect(await clientProvider("other-project").authClient.getClient()).to.equal(
       defaultAuthClient,
     );
+
+    await defaultAuthClient.getAccessToken();
+    expect(sourceClient.requests).to.have.lengthOf(1);
+    expect(sourceClient.requests[0]).to.deep.include({
+      method: "POST",
+      url: `https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${TARGET_SERVICE_ACCOUNT}:generateAccessToken`,
+      data: {
+        delegates: [],
+        scope: [
+          "https://www.googleapis.com/auth/cloud-platform",
+          "https://www.googleapis.com/auth/drive.readonly",
+        ],
+        lifetime: "3600s",
+      },
+    });
   });
 
   test("impersonated client exchanges the lazily resolved source credentials for a token", async () => {
@@ -208,9 +221,31 @@ suite("BigQueryDbAdapter", () => {
       url: `https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${TARGET_SERVICE_ACCOUNT}:generateAccessToken`,
       data: {
         delegates: [],
+        scope: ["https://www.googleapis.com/auth/cloud-platform"],
+        lifetime: "3600s",
+      },
+    });
+  });
+
+  test("impersonated client includes extra scopes in the token exchange request", async () => {
+    const sourceClient = new FakeSourceClient();
+    const impersonatedClient = createImpersonatedClient(
+      TARGET_SERVICE_ACCOUNT,
+      new DeferredAuthClient(async () => sourceClient),
+      BIGQUERY_EXTRA_SCOPES,
+    );
+
+    await impersonatedClient.getAccessToken();
+
+    expect(sourceClient.requests.length).to.equal(1);
+    expect(sourceClient.requests[0]).to.deep.include({
+      method: "POST",
+      url: `https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${TARGET_SERVICE_ACCOUNT}:generateAccessToken`,
+      data: {
+        delegates: [],
         scope: [
           "https://www.googleapis.com/auth/cloud-platform",
-          "https://www.googleapis.com/auth/drive",
+          "https://www.googleapis.com/auth/drive.readonly",
         ],
         lifetime: "3600s",
       },
@@ -353,6 +388,67 @@ suite("BigQueryDbAdapter", () => {
       caughtError = e;
     }
     expect(caughtError?.message).to.equal("Access Denied: Dataset project1:restricted_schema");
+  });
+
+  test("table() returns null when table metadata is not found", async () => {
+    const mockBigQuery = mock<BigQuery>();
+    const mockDataset = mock<Dataset>();
+    const mockDeletedTable = mock<Table>();
+
+    when(mockBigQuery.dataset("schema1")).thenReturn(instance(mockDataset));
+    when(mockDataset.table("deleted_table")).thenReturn(instance(mockDeletedTable));
+    when(mockDeletedTable.getMetadata()).thenReject(
+      Object.assign(new Error("Not found"), { errors: [{ reason: "notFound" }] }),
+    );
+
+    const adapter = new BigQueryDbAdapter(
+      dataform.BigQuery.create({ projectId: "project1", location: "US" }),
+      { clientProvider: () => instance(mockBigQuery) },
+    );
+
+    expect(
+      await adapter.table({ database: "project1", schema: "schema1", name: "deleted_table" }),
+    ).to.equal(null);
+  });
+
+  test("tables() omits concurrently deleted tables", async () => {
+    const mockBigQuery = mock<BigQuery>();
+    const mockDataset = mock<Dataset>();
+    const mockLiveTable = mock<Table>();
+    const mockDeletedTable = mock<Table>();
+
+    when(mockLiveTable.id).thenReturn("live_table");
+    when(mockDeletedTable.id).thenReturn("deleted_table");
+    when(mockBigQuery.dataset("schema1")).thenReturn(instance(mockDataset));
+    when(mockDataset.getTables(anything())).thenResolve([
+      [instance(mockLiveTable), instance(mockDeletedTable)],
+      {},
+      {},
+    ]);
+    when(mockDataset.table("live_table")).thenReturn(instance(mockLiveTable));
+    when(mockDataset.table("deleted_table")).thenReturn(instance(mockDeletedTable));
+    when(mockLiveTable.getMetadata()).thenResolve([
+      {
+        type: "TABLE",
+        tableReference: { projectId: "project1", datasetId: "schema1", tableId: "live_table" },
+        schema: { fields: [{ name: "col1", type: "STRING" }] },
+        lastModifiedTime: "123456789",
+      },
+      undefined,
+    ]);
+    when(mockDeletedTable.getMetadata()).thenReject(
+      Object.assign(new Error("Not found"), { errors: [{ reason: "notFound" }] }),
+    );
+
+    const adapter = new BigQueryDbAdapter(
+      dataform.BigQuery.create({ projectId: "project1", location: "US" }),
+      { clientProvider: () => instance(mockBigQuery) },
+    );
+
+    const tables = await adapter.tables("project1", "schema1");
+    expect(tables.map((t) => t.target)).to.deep.equal([
+      { database: "project1", schema: "schema1", name: "live_table" },
+    ]);
   });
 
   test("setMetadata handles action without columns", async () => {
@@ -569,64 +665,6 @@ suite("BigQueryDbAdapter", () => {
     );
 
     expect(schema).to.deep.equal([{ name: "id", type: "INTEGER", description: "id desc" }]);
-  });
-
-  test("search() filters out tables whose metadata is not found", async () => {
-    const projectId = "project1";
-    const liveSchema = "live_schema";
-    const deletedSchema = "deleted_schema";
-    const tableName = "table1";
-
-    const mockBigQuery: any = {
-      createQueryStream: () => {
-        const stream = new EventEmitter();
-        process.nextTick(() => {
-          stream.emit("data", {
-            table_catalog: projectId,
-            table_schema: liveSchema,
-            table_name: tableName,
-          });
-          stream.emit("data", {
-            table_catalog: projectId,
-            table_schema: deletedSchema,
-            table_name: tableName,
-          });
-          stream.emit("end");
-        });
-        return stream;
-      },
-      dataset: (schema: string) => ({
-        table: (name: string) => ({
-          getMetadata: () => {
-            if (schema === deletedSchema) {
-              return Promise.reject({ errors: [{ reason: "notFound" }] });
-            }
-            return Promise.resolve([
-              {
-                type: "TABLE",
-                tableReference: { projectId, datasetId: schema, tableId: name },
-                schema: { fields: [{ name: "col1", type: "STRING" }] },
-                lastModifiedTime: "123456789",
-              },
-            ]);
-          },
-        }),
-      }),
-    };
-
-    const credentials = dataform.BigQuery.create({ projectId, location: "US" });
-    const adapter = new BigQueryDbAdapter(credentials, {
-      clientProvider: () => mockBigQuery,
-    });
-
-    const result = await adapter.search("schema");
-
-    expect(result.length).to.equal(1);
-    expect(result[0].target).to.eql({
-      database: projectId,
-      schema: liveSchema,
-      name: tableName,
-    });
   });
 
   suite("executeRaw", () => {

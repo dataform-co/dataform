@@ -394,9 +394,9 @@ semantic_model:
         graphErrors: {},
         dataformCoreVersion: version,
         targets: [
-          { schema: "defaultDataset", name: "UniGraph", database: "defaultProject" },
           { schema: "defaultDataset", name: "expand_graph", database: "defaultProject" },
           { schema: "defaultDataset", name: "query_graph", database: "defaultProject" },
+          { schema: "defaultDataset", name: "UniGraph", database: "defaultProject" },
         ],
         jitData: {},
         tables: [
@@ -565,7 +565,7 @@ semantic_model:
           ],
         },
         dataformCoreVersion: version,
-        targets: [graphTarget, declOneTarget, declTwoTarget],
+        targets: [declOneTarget, declTwoTarget, graphTarget],
         jitData: {},
         declarations: [
           {
@@ -641,7 +641,6 @@ semantic_model:
           ],
         },
         dataformCoreVersion: version,
-        targets: [collisionTarget, collisionTarget],
         jitData: {},
       },
     },

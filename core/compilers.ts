@@ -34,10 +34,11 @@ const JIT_CONTEXT_CONSTANTS = ["adapter", "data", "executionData"]
 export const INVALID_YAML_ERROR_STRING = "is not a valid YAML file";
 
 export function compile(code: string, path: string): string {
-  if (Path.fileExtension(path) === "sqlx") {
+  const fileExtension = Path.fileExtension(path).toLowerCase();
+  if (fileExtension === "sqlx") {
     return compileSqlx(SyntaxTreeNode.create(code), path);
   }
-  if (Path.fileExtension(path) === "yaml" || Path.fileExtension(path) === "yml") {
+  if (fileExtension === "yaml" || fileExtension === "yml") {
     try {
       const yamlAsJson = loadYaml(code);
       return `exports.asJson = ${JSON.stringify(yamlAsJson)}`;
@@ -48,7 +49,7 @@ export function compile(code: string, path: string): string {
       throw e;
     }
   }
-  if (Path.fileExtension(path) === "ipynb") {
+  if (fileExtension === "ipynb") {
     let codeAsJson = {};
     try {
       codeAsJson = JSON.parse(code);
@@ -58,11 +59,11 @@ export function compile(code: string, path: string): string {
     const notebookAsJson = JSON.stringify(codeAsJson);
     return `exports.asJson = ${notebookAsJson}`;
   }
-  if (Path.fileExtension(path) === "sql") {
+  if (fileExtension === "sql") {
     const escapedCode = code.replace(/\\/g, "\\\\").replace(/`/g, "\\`").replace(/\${/g, "\\${");
     return `exports.query = \`${escapedCode}\`;`;
   }
-  if (Path.fileExtension(path) === "md") {
+  if (fileExtension === "md") {
     const contents = code
       .replace(/\r\n/g, "\n")
       .replace(/\\/g, "\\\\")

@@ -129,6 +129,8 @@ function actionConfigFilenameIsInvalidSqlx(
 }
 
 function loadActionConfigs(session: Session, filePaths: string[]) {
+  // Extension matching during auto-discovery is intentionally case-sensitive so unreferenced
+  // uppercase files in existing repositories remain ignored.
   filePaths
     .filter(
       (path) =>
@@ -238,6 +240,7 @@ function loadActionConfigsFile(
 // under any subdirectory of definitions/. Multi-graph support may be added in
 // a future version.
 function loadPropertyGraphs(session: Session, filePaths: string[]) {
+  // Case-sensitive extension filter (see loadActionConfigs).
   const graphPaths = filePaths
     .filter(
       (path) =>
@@ -323,6 +326,8 @@ function dataformCompile(compileRequest: dataform.ICompileExecutionRequest, sess
   // We delay attaching them to `global` until after all have been required, to prevent
   // "includes" files from implicitly depending on other "includes" files.
   const topLevelIncludes: { [key: string]: any } = {};
+  // Extension matching during auto-discovery is intentionally case-sensitive
+  // (see loadActionConfigs).
   compileRequest.compileConfig.filePaths
     .filter((path) => path.startsWith(`includes${Path.separator}`))
     .filter((path) => path.split(Path.separator).length === 2) // Only include top-level "includes" files.
@@ -345,6 +350,8 @@ function dataformCompile(compileRequest: dataform.ICompileExecutionRequest, sess
   loadPropertyGraphs(session, compileRequest.compileConfig.filePaths);
 
   // Require all "definitions" files (attaching them to the session).
+  // Extension matching during auto-discovery is intentionally case-sensitive
+  // (see loadActionConfigs).
   compileRequest.compileConfig.filePaths
     .filter((path) => path.startsWith(`definitions${Path.separator}`))
     .filter((path) => Path.fileExtension(path) === "js" || Path.fileExtension(path) === "sqlx")

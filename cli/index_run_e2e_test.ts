@@ -90,7 +90,7 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
       targets: [
         {
           database: INTEGRATION_TEST_PROJECT,
-          schema: "dataform",
+          schema: "dataform_test_schema_suffix",
           name: "example",
         },
       ],

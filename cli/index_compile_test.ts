@@ -611,13 +611,13 @@ SELECT 1 as id
       targets: [
         {
           database: INTEGRATION_TEST_PROJECT,
-          name: "dataform_example_table_assertions_uniqueKey_0",
-          schema: "dataform_assertions",
+          name: "example_table",
+          schema: "dataform",
         },
         {
           database: INTEGRATION_TEST_PROJECT,
-          name: "example_table",
-          schema: "dataform",
+          name: "dataform_example_table_assertions_uniqueKey_0",
+          schema: "dataform_assertions",
         },
         {
           database: INTEGRATION_TEST_PROJECT,
@@ -713,6 +713,33 @@ SELECT 1 as id
       ]);
       expect(withDepsResult.exitCode, withDepsResult.stderr).equals(0);
       expect(tableNames(withDepsResult.stdout)).deep.equals(["midstream", "upstream"]);
+    });
+
+    test("--output-actions with --schema-suffix retains suffixed targets", async () => {
+      const result = await runCli("compile", [
+        projectDir,
+        "--schema-suffix",
+        "dev",
+        "--output-actions",
+        "midstream",
+        "--json",
+      ]);
+      expect(result.exitCode, result.stderr).equals(0);
+      const compiledGraph = JSON.parse(result.stdout);
+      expect(compiledGraph.tables.map((table: any) => table.target)).deep.equals([
+        {
+          database: INTEGRATION_TEST_PROJECT,
+          schema: "dataform_dev",
+          name: "midstream",
+        },
+      ]);
+      expect(compiledGraph.targets).deep.equals([
+        {
+          database: INTEGRATION_TEST_PROJECT,
+          schema: "dataform_dev",
+          name: "midstream",
+        },
+      ]);
     });
 
     test("--output-actions --output-include-deps pulls in upstream dependencies", async () => {

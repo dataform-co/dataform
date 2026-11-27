@@ -44,27 +44,25 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
       // Ensure we extract only the file name.
       // This handles both .yaml and .dp.yaml extensions
       const fileName = Path.filename(config.filename);
+      const lowerFileName = fileName.toLowerCase();
 
-      if (
-        fileName.toLowerCase().endsWith(".dp.yaml") ||
-        fileName.toLowerCase().endsWith(".dp.sqlx")
-      ) {
+      if (lowerFileName.endsWith(".dp.yaml") || lowerFileName.endsWith(".dp.sqlx")) {
         config.name = fileName.slice(0, -8);
-      } else if (
-        fileName.toLowerCase().endsWith(".yaml") ||
-        fileName.toLowerCase().endsWith(".sqlx")
-      ) {
+      } else if (lowerFileName.endsWith(".yaml") || lowerFileName.endsWith(".sqlx")) {
         config.name = fileName.slice(0, -5);
       } else {
         throw new Error("Only YAML and SQLX files are supported");
       }
-    } else if (config.name.endsWith(".dp") && config.filename.endsWith(".dp.sqlx")) {
+    } else if (
+      config.name.toLowerCase().endsWith(".dp") &&
+      config.filename.toLowerCase().endsWith(".dp.sqlx")
+    ) {
       // SQLX actions have the name set in the config from the file name.
       // Remove the .dp suffix to avoid compilation failures.
       config.name = config.name.slice(0, -3);
     }
 
-    const extension = Path.fileExtension(config.filename);
+    const extension = Path.fileExtension(config.filename).toLowerCase();
     if (extension === "yaml") {
       this.configureYaml(session, config, configPath);
     } else if (extension === "sqlx") {
