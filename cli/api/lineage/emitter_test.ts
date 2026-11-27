@@ -475,6 +475,10 @@ suite("LineageEmitter", () => {
     const authClient = await client.auth.getClient();
     expect(authClient).to.be.instanceOf(Impersonated);
     expect((authClient as Impersonated).getTargetPrincipal()).to.equal(serviceAccount);
+    // google-auth-library marks targetScopes private on Impersonated.
+    expect((authClient as unknown as { targetScopes: string[] }).targetScopes).to.deep.equal([
+      "https://www.googleapis.com/auth/cloud-platform",
+    ]);
   });
 
   test("non-transient errors propagate without outer-loop retry", async () => {
@@ -518,7 +522,7 @@ suite("LineageEmitter", () => {
 
     let callCount = 0;
     const endpointsUsed: string[] = [];
-    const provider = (projectId: string, endpoint: string) => {
+    const provider = (_projectId: string, endpoint: string) => {
       endpointsUsed.push(endpoint);
       callCount++;
       mockClient.processOpenLineageRunEventError = callCount === 1 ? dnsError : null;
@@ -555,7 +559,7 @@ suite("LineageEmitter", () => {
 
     let callCount = 0;
     const endpointsUsed: string[] = [];
-    const provider = (projectId: string, endpoint: string) => {
+    const provider = (_projectId: string, endpoint: string) => {
       endpointsUsed.push(endpoint);
       callCount++;
       mockClient.processOpenLineageRunEventError = callCount === 1 ? dnsError : null;
@@ -603,7 +607,7 @@ suite("LineageEmitter", () => {
 
     let callCount = 0;
     const endpointsUsed: string[] = [];
-    const provider = (projectId: string, endpoint: string) => {
+    const provider = (_projectId: string, endpoint: string) => {
       endpointsUsed.push(endpoint);
       callCount++;
       mockClient.processOpenLineageRunEventError = callCount === 1 ? grpcDnsError : null;
@@ -1079,7 +1083,7 @@ suite("LineageEmitter", () => {
 
     let callCount = 0;
     const endpointsUsed: string[] = [];
-    const provider = (projectId: string, endpoint: string) => {
+    const provider = (_projectId: string, endpoint: string) => {
       endpointsUsed.push(endpoint);
       callCount++;
       mockClient.processOpenLineageRunEventError = callCount === 1 ? redirectError : null;
@@ -1193,7 +1197,7 @@ suite("LineageEmitter", () => {
 
     let callCount = 0;
     const endpointsUsed: string[] = [];
-    const provider = (projectId: string, endpoint: string) => {
+    const provider = (_projectId: string, endpoint: string) => {
       endpointsUsed.push(endpoint);
       callCount++;
       mockClient.processOpenLineageRunEventError = callCount === 1 ? redirectError : null;
@@ -1238,7 +1242,7 @@ suite("LineageEmitter", () => {
     invalidArgErr.code = 3;
 
     let callCount = 0;
-    const provider = (projectId: string, endpoint: string) => {
+    const provider = () => {
       callCount++;
       mockClient.processOpenLineageRunEventError = callCount === 1 ? dnsError : invalidArgErr;
       return mockClient as any;
@@ -1361,7 +1365,7 @@ suite("LineageEmitter", () => {
     mockClient.processOpenLineageRunEventError = internalErr;
 
     const endpointsUsed: string[] = [];
-    const provider = (projectId: string, endpoint: string) => {
+    const provider = (_projectId: string, endpoint: string) => {
       endpointsUsed.push(endpoint);
       return mockClient as any;
     };

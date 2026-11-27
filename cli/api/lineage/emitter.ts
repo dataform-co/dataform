@@ -56,7 +56,7 @@ export function createLineageClientProvider(
   credentials: dataform.IBigQuery,
 ): LineageClientProvider {
   const clients = new Map<string, LineageClient>();
-  // Impersonates the same service account as the BigQuery adapter, if one is configured.
+  // Impersonates the same service account as the BigQuery adapter without requesting its Drive scope.
   const authClient = createAuthClient(credentials);
   return (projectId: string, endpoint: string) => {
     const targetProjectId = projectId || credentials.projectId;

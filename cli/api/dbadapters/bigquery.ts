@@ -24,7 +24,10 @@ import { retry } from "df/common/promises";
 import { dataform } from "df/protos/ts";
 
 const CLOUD_PLATFORM_SCOPE = "https://www.googleapis.com/auth/cloud-platform";
-const EXTRA_GOOGLE_SCOPES = ["https://www.googleapis.com/auth/drive"];
+// Needed to query BigQuery external tables backed by Google Drive.
+export const BIGQUERY_EXTRA_SCOPES: readonly string[] = [
+  "https://www.googleapis.com/auth/drive.readonly",
+];
 
 const BIGQUERY_DATE_RELATED_FIELDS = [
   "BigQueryDate",
@@ -76,11 +79,12 @@ export class DeferredAuthClient extends AuthClient {
 export function createImpersonatedClient(
   targetPrincipal: string,
   sourceClient: AuthClient,
+  extraScopes: readonly string[] = [],
 ): Impersonated {
   return new Impersonated({
     sourceClient,
     targetPrincipal,
-    targetScopes: [CLOUD_PLATFORM_SCOPE, ...EXTRA_GOOGLE_SCOPES],
+    targetScopes: [CLOUD_PLATFORM_SCOPE, ...extraScopes],
   });
 }
 
@@ -89,7 +93,10 @@ export function createImpersonatedClient(
  * isn't set. The service account key in `credentials.credentials`, or Application Default
  * Credentials if it's empty, is used as the source credentials.
  */
-export function createAuthClient(credentials: dataform.IBigQuery): AuthClient | undefined {
+export function createAuthClient(
+  credentials: dataform.IBigQuery,
+  extraScopes: readonly string[] = [],
+): AuthClient | undefined {
   if (!credentials.impersonateServiceAccount) {
     return undefined;
   }
@@ -100,6 +107,7 @@ export function createAuthClient(credentials: dataform.IBigQuery): AuthClient | 
   return createImpersonatedClient(
     credentials.impersonateServiceAccount,
     new DeferredAuthClient(() => sourceAuth.getClient()),
+    extraScopes,
   );
 }
 
@@ -115,7 +123,7 @@ export function getBigQueryClientOptions(
 ): BigQueryOptions {
   return {
     projectId: projectId || credentials.projectId,
-    scopes: EXTRA_GOOGLE_SCOPES,
+    scopes: [...BIGQUERY_EXTRA_SCOPES],
     // Unset proto string fields read as "", which BigQuery rejects as a job location. Pass
     // undefined instead so that BigQuery auto-selects the location.
     location: credentials.location || undefined,
@@ -130,7 +138,7 @@ export function createBigQueryClientProvider(
 ): BigQueryClientProvider {
   const clients = new Map<string, BigQuery>();
   // Shared by the clients of all projects, so that they reuse the same impersonated token.
-  const authClient = createAuthClient(credentials);
+  const authClient = createAuthClient(credentials, BIGQUERY_EXTRA_SCOPES);
   return (projectId?: string) => {
     projectId = projectId || credentials.projectId;
     if (!clients.has(projectId)) {

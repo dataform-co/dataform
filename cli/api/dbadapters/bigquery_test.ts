@@ -5,6 +5,7 @@ import { AuthClient, gaxios, Impersonated } from "google-auth-library";
 import { anything, instance, mock, when } from "ts-mockito";
 
 import {
+  BIGQUERY_EXTRA_SCOPES,
   BigQueryDbAdapter,
   createAuthClient,
   createBigQueryClientProvider,
@@ -95,6 +96,7 @@ suite("BigQueryDbAdapter", () => {
       expect(options).to.deep.include({
         projectId: "target-project-id",
         location: "EU",
+        scopes: ["https://www.googleapis.com/auth/drive.readonly"],
         credentials: serviceAccountKey,
       });
     });
@@ -107,6 +109,7 @@ suite("BigQueryDbAdapter", () => {
         createAuthClient(credentials),
       );
       expect(options).to.deep.include({ projectId: "adc-project-id", location: "US" });
+      expect(options.scopes).to.deep.equal(["https://www.googleapis.com/auth/drive.readonly"]);
       expect(Boolean(options.credentials)).to.equal(false);
       expect(options.authClient).to.equal(undefined);
     });
@@ -164,6 +167,11 @@ suite("BigQueryDbAdapter", () => {
     const defaultClient = clientProvider();
     expect(defaultClient.projectId).to.equal("default-project");
     expect(defaultClient.location).to.equal("EU");
+    // google-auth-library marks scopes and targetScopes private on GoogleAuth and Impersonated.
+    expect((defaultClient.authClient as unknown as { scopes: string[] }).scopes).to.deep.equal([
+      "https://www.googleapis.com/auth/bigquery",
+      "https://www.googleapis.com/auth/drive.readonly",
+    ]);
     expect(clientProvider()).to.equal(defaultClient);
     expect(clientProvider("other-project").projectId).to.equal("other-project");
   });
@@ -180,6 +188,12 @@ suite("BigQueryDbAdapter", () => {
     expect(defaultAuthClient).to.be.instanceOf(Impersonated);
     expect((defaultAuthClient as Impersonated).getTargetPrincipal()).to.equal(
       TARGET_SERVICE_ACCOUNT,
+    );
+    expect((defaultAuthClient as unknown as { targetScopes: string[] }).targetScopes).to.deep.equal(
+      [
+        "https://www.googleapis.com/auth/cloud-platform",
+        "https://www.googleapis.com/auth/drive.readonly",
+      ],
     );
     expect(await clientProvider("other-project").authClient.getClient()).to.equal(
       defaultAuthClient,
@@ -208,9 +222,31 @@ suite("BigQueryDbAdapter", () => {
       url: `https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${TARGET_SERVICE_ACCOUNT}:generateAccessToken`,
       data: {
         delegates: [],
+        scope: ["https://www.googleapis.com/auth/cloud-platform"],
+        lifetime: "3600s",
+      },
+    });
+  });
+
+  test("impersonated client includes extra scopes in the token exchange request", async () => {
+    const sourceClient = new FakeSourceClient();
+    const impersonatedClient = createImpersonatedClient(
+      TARGET_SERVICE_ACCOUNT,
+      new DeferredAuthClient(async () => sourceClient),
+      BIGQUERY_EXTRA_SCOPES,
+    );
+
+    await impersonatedClient.getAccessToken();
+
+    expect(sourceClient.requests.length).to.equal(1);
+    expect(sourceClient.requests[0]).to.deep.include({
+      method: "POST",
+      url: `https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${TARGET_SERVICE_ACCOUNT}:generateAccessToken`,
+      data: {
+        delegates: [],
         scope: [
           "https://www.googleapis.com/auth/cloud-platform",
-          "https://www.googleapis.com/auth/drive",
+          "https://www.googleapis.com/auth/drive.readonly",
         ],
         lifetime: "3600s",
       },
