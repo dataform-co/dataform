@@ -1,7 +1,7 @@
 import { BigQuery, Dataset, Table, TableField, TableMetadata } from "@google-cloud/bigquery";
 import { expect } from "chai";
 import { AuthClient, gaxios, Impersonated } from "google-auth-library";
-import { anything, deepEqual, instance, mock, when } from "ts-mockito";
+import { anything, instance, mock, when } from "ts-mockito";
 
 import {
   BigQueryDbAdapter,
@@ -354,7 +354,28 @@ suite("BigQueryDbAdapter", () => {
     expect(caughtError?.message).to.equal("Access Denied: Dataset project1:restricted_schema");
   });
 
-  test("table() returns null on notFound and tables() omits concurrently deleted tables", async () => {
+  test("table() returns null when table metadata is not found", async () => {
+    const mockBigQuery = mock<BigQuery>();
+    const mockDataset = mock<Dataset>();
+    const mockDeletedTable = mock<Table>();
+
+    when(mockBigQuery.dataset("schema1")).thenReturn(instance(mockDataset));
+    when(mockDataset.table("deleted_table")).thenReturn(instance(mockDeletedTable));
+    when(mockDeletedTable.getMetadata()).thenReject(
+      Object.assign(new Error("Not found"), { errors: [{ reason: "notFound" }] }),
+    );
+
+    const adapter = new BigQueryDbAdapter(
+      dataform.BigQuery.create({ projectId: "project1", location: "US" }),
+      { clientProvider: () => instance(mockBigQuery) },
+    );
+
+    expect(
+      await adapter.table({ database: "project1", schema: "schema1", name: "deleted_table" }),
+    ).to.equal(null);
+  });
+
+  test("tables() omits concurrently deleted tables", async () => {
     const mockBigQuery = mock<BigQuery>();
     const mockDataset = mock<Dataset>();
     const mockLiveTable = mock<Table>();
@@ -363,7 +384,7 @@ suite("BigQueryDbAdapter", () => {
     when(mockLiveTable.id).thenReturn("live_table");
     when(mockDeletedTable.id).thenReturn("deleted_table");
     when(mockBigQuery.dataset("schema1")).thenReturn(instance(mockDataset));
-    when(mockDataset.getTables(deepEqual({ autoPaginate: true, maxResults: 1000 }))).thenResolve([
+    when(mockDataset.getTables(anything())).thenResolve([
       [instance(mockLiveTable), instance(mockDeletedTable)],
       {},
       {},
@@ -387,10 +408,6 @@ suite("BigQueryDbAdapter", () => {
       dataform.BigQuery.create({ projectId: "project1", location: "US" }),
       { clientProvider: () => instance(mockBigQuery) },
     );
-
-    expect(
-      await adapter.table({ database: "project1", schema: "schema1", name: "deleted_table" }),
-    ).to.equal(null);
 
     const tables = await adapter.tables("project1", "schema1");
     expect(tables.map((t) => t.target)).to.deep.equal([
