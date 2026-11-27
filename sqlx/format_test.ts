@@ -289,6 +289,78 @@ post_operations {
     });
   });
 
+  suite("formatter with dollar signs", () => {
+    // String.prototype.replace expands $', $`, $& and $$ in a replacement string. The formatter
+    // must insert text literally, wherever on the line these sequences appear.
+    const cases: Array<{ name: string; input: string; expected: string }> = [
+      {
+        name: "$' in a string literal before a trailing comment",
+        input: `SELECT JSON_EXTRACT(j, '$') AS root -- doc\n`,
+        expected: `SELECT\n  JSON_EXTRACT(j, '$') AS root\n  -- doc\n`,
+      },
+      {
+        name: "$' in a comment on its own line",
+        input: `SELECT\n  -- JSON_EXTRACT(x, '$')\n  a\nFROM t\n`,
+        expected: `SELECT\n  -- JSON_EXTRACT(x, '$')\n  a\nFROM\n  t\n`,
+      },
+      {
+        name: "$` in a comment",
+        input: `SELECT\n  a, -- x $\` y\n  b\nFROM t\n`,
+        expected: `SELECT\n  a,\n  -- x $\` y\n  b\nFROM\n  t\n`,
+      },
+      {
+        name: "$& in a comment",
+        input: `SELECT\n  a, -- see $& here\n  b\nFROM t\n`,
+        expected: `SELECT\n  a,\n  -- see $& here\n  b\nFROM\n  t\n`,
+      },
+      {
+        name: "$$ in a comment",
+        input: `SELECT\n  a, -- costs $$\n  b\nFROM t\n`,
+        expected: `SELECT\n  a,\n  -- costs $$\n  b\nFROM\n  t\n`,
+      },
+      {
+        name: "$$ in a string literal on the same line as a comment",
+        input: `SELECT '$$' AS a -- plain\n`,
+        expected: `SELECT\n  '$$' AS a\n  -- plain\n`,
+      },
+      {
+        name: "$$ in a placeholder on the same line as a comment",
+        input: `SELECT \${"$$"} /* plain */ AS a\n`,
+        expected: `SELECT\n  \${"$$"}\n  /* plain */\n  AS a\n`,
+      },
+      {
+        name: "$' in a multi-line placeholder",
+        input: `SELECT\n  \${[\n  "$'"].join()}\nFROM t\n`,
+        expected: `SELECT\n  \${\n    [\n      "$'"\n    ].join()\n  }\nFROM\n  t\n`,
+      },
+      {
+        name: "$ followed by a digit",
+        input: `SELECT\n  a, -- costs $5\n  b\nFROM t\n`,
+        expected: `SELECT\n  a,\n  -- costs $5\n  b\nFROM\n  t\n`,
+      },
+    ];
+
+    for (const { name, input, expected } of cases) {
+      test(name, () => {
+        const formatted = format(input, "sqlx");
+        expect(formatted).equal(expected);
+        expect(format(formatted, "sqlx")).equal(formatted);
+      });
+    }
+
+    test("writes $& followed by $$ unchanged", async () => {
+      // The text added by $& and removed by each $$ used to cancel out, so the corrupted
+      // result passed formatFile's checks and was written to the file.
+      const comment = `-- x $& ${Array(17).fill("$$").join(" ")}`;
+      const filePath = path.join(process.env.TEST_TMPDIR, "dollar_signs.sqlx");
+      fs.writeFileSync(filePath, `SELECT\n  a, ${comment}\n  b\nFROM t\n`);
+      await formatFile(filePath, { overwriteFile: true });
+      expect(fs.readFileSync(filePath, "utf8")).equal(
+        `SELECT\n  a,\n  ${comment}\n  b\nFROM\n  t\n`,
+      );
+    });
+  });
+
   suite("formatter todos", () => {
     test("formats template strings in a string", async () => {
       const fileContents = `
