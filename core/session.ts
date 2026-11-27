@@ -627,11 +627,6 @@ export class Session {
       ),
       graphErrors: this.graphErrors,
       dataformCoreVersion,
-      targets: this.actions.map((action) =>
-        action instanceof Declaration
-          ? action.getTarget()
-          : this.finalizeTarget(action.getTarget()),
-      ),
       jitData: this.jitContextData,
     });
 
@@ -677,6 +672,19 @@ export class Session {
     );
 
     this.removeNonUniqueActionsFromCompiledGraph(compiledGraph);
+
+    compiledGraph.targets = []
+      .concat(
+        compiledGraph.tables,
+        compiledGraph.assertions,
+        compiledGraph.operations,
+        compiledGraph.declarations,
+        compiledGraph.notebooks,
+        compiledGraph.dataPreparations,
+        compiledGraph.propertyGraphs,
+        compiledGraph.tests,
+      )
+      .map((action) => action.target);
 
     this.finalizePropertyGraphs();
 

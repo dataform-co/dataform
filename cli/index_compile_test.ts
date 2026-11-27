@@ -611,13 +611,13 @@ SELECT 1 as id
       targets: [
         {
           database: INTEGRATION_TEST_PROJECT,
-          name: "dataform_example_table_assertions_uniqueKey_0",
-          schema: "dataform_assertions",
+          name: "example_table",
+          schema: "dataform",
         },
         {
           database: INTEGRATION_TEST_PROJECT,
-          name: "example_table",
-          schema: "dataform",
+          name: "dataform_example_table_assertions_uniqueKey_0",
+          schema: "dataform_assertions",
         },
         {
           database: INTEGRATION_TEST_PROJECT,

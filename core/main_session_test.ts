@@ -680,13 +680,18 @@ semantic_model:
       expect(asPlainObject(result.compile.compiledGraph.targets)).deep.equals([
         {
           database: "defaultProject_db",
-          schema: "defaultDataset_ds",
-          name: "pre_MyGraph",
+          schema: "my_catalog.my_namespace",
+          name: "pre_lakehouse_tbl",
         },
         {
           database: "defaultProject_db",
-          schema: "my_catalog.my_namespace",
-          name: "pre_lakehouse_tbl",
+          schema: "defaultDataset_ds",
+          name: "pre_tbl",
+        },
+        {
+          database: "defaultProject_db",
+          schema: "defaultAssertions_ds",
+          name: "pre_defaultDataset_tbl_assertions_rowConditions",
         },
         {
           database: "defaultProject_db",
@@ -700,18 +705,13 @@ semantic_model:
         },
         {
           database: "defaultProject_db",
-          schema: "defaultAssertions_ds",
-          name: "pre_defaultDataset_tbl_assertions_rowConditions",
-        },
-        {
-          database: "defaultProject_db",
           schema: "defaultDataset_ds",
-          name: "pre_tbl",
+          name: "pre_MyGraph",
         },
       ]);
     });
 
-    test("keeps declaration un-suffixed when colliding with a table's un-suffixed target", () => {
+    test("omits actions removed for duplicate canonical targets", () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
       writeWorkflowSettingsFile(projectDir, VALID_WORKFLOW_SETTINGS_YAML);
       writeDefinitionFile(
@@ -732,18 +732,8 @@ publish("shared", { type: "table" }).query("SELECT 1");
         ),
       );
 
-      expect(asPlainObject(result.compile.compiledGraph.targets)).deep.equals([
-        {
-          database: "defaultProject",
-          schema: "defaultDataset",
-          name: "shared",
-        },
-        {
-          database: "defaultProject",
-          schema: "defaultDataset_dev",
-          name: "shared",
-        },
-      ]);
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).equals(2);
+      expect(asPlainObject(result.compile.compiledGraph.targets)).deep.equals([]);
     });
 
     test("applies suffixes and prefixes to test targets", () => {
