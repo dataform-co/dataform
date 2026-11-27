@@ -1,0 +1,461 @@
+#!/usr/bin/env python3
+"""Updates the Node.js and pnpm toolchain versions and reports majors.
+
+Dependabot updates npm packages and Bazel modules, but not the toolchain
+versions that the Bazel build downloads itself. This script:
+
+  1. Updates, within the current major version:
+       - Node.js: node.toolchain(node_version = ...) in MODULE.bazel, to the
+         newest release of the current major line published at least
+         NODE_COOLDOWN_DAYS ago;
+       - pnpm: pnpm.pnpm(pnpm_version = ..., pnpm_version_integrity = ...) in
+         MODULE.bazel and "packageManager" in package.json, to the newest
+         release of the current major published at least PNPM_COOLDOWN_DAYS
+         ago (pnpm is installed from the npm registry, so it waits as long as
+         other npm packages for the registry used by CI). The integrity is set
+         because aspect_rules_js only knows the integrity of the pnpm versions
+         that existed when it was released.
+     MODULE.bazel.lock must be refreshed afterwards, e.g. with
+     `bazel build --nobuild --lockfile_mode=update //...`.
+  2. With --majors-report, writes a markdown report of the major versions that
+     are newer than the ones in use (Bazel, Node.js LTS, pnpm, Bazel modules
+     and direct npm dependencies), with end-of-life dates where known. Majors
+     are never updated automatically.
+
+Bazel itself isn't updated: the Cloud Build image (gcr.io/cloud-builders/bazel)
+only exists for a few Bazel versions. It's included in the majors report, with
+the newest version of the current major.
+
+Usage:
+  ./scripts/update_toolchain_versions [--dry-run] [--summary FILE]
+  ./scripts/update_toolchain_versions --majors-report FILE
+
+Environment:
+  NODE_COOLDOWN_DAYS  Minimum age of a Node.js release, in days (default 7).
+  PNPM_COOLDOWN_DAYS  Minimum age of a pnpm release, in days (default 21).
+
+Writes a markdown summary (for the PR description) to --summary and exits with
+0 whether or not anything changed; compare the files to find out.
+"""
+
+import argparse
+import concurrent.futures
+import datetime
+import json
+import os
+import re
+import sys
+import urllib.error
+import urllib.parse
+import urllib.request
+
+NODE_COOLDOWN_DAYS = int(os.environ.get("NODE_COOLDOWN_DAYS", "7"))
+PNPM_COOLDOWN_DAYS = int(os.environ.get("PNPM_COOLDOWN_DAYS", "21"))
+
+MODULE_BAZEL = "MODULE.bazel"
+PACKAGE_JSON = "package.json"
+BAZEL_VERSION_FILE = ".bazelversion"
+
+NODE_INDEX = "https://nodejs.org/dist/index.json"
+NPM_REGISTRY = "https://registry.npmjs.org/"
+BCR_METADATA = "https://bcr.bazel.build/modules/%s/metadata.json"
+EOL_API = "https://endoflife.date/api/%s.json"
+REPORT_MARKER = "<!-- update-toolchain-versions:majors -->"
+
+VERSION = re.compile(r"^(\d+)\.(\d+)\.(\d+)$")
+NODE_VERSION_ATTR = re.compile(r'(node\.toolchain\([^)]*?node_version\s*=\s*")([^"]+)(")', re.S)
+PNPM_CALL = re.compile(r"pnpm\.pnpm\((?P<args>[^)]*)\)", re.S)
+PNPM_VERSION_ATTR = re.compile(r'pnpm_version\s*=\s*"([^"]+)"')
+PACKAGE_MANAGER = re.compile(r'("packageManager"\s*:\s*"pnpm@)([^"]+)(")')
+BAZEL_DEP = re.compile(r'bazel_dep\(\s*name\s*=\s*"([^"]+)"\s*,\s*version\s*=\s*"([^"]+)"')
+
+
+# --- Versions ----------------------------------------------------------------
+
+def parse_version(text):
+    """Returns (major, minor, patch) for a stable x.y.z version, else None."""
+    match = VERSION.match(text.strip().lstrip("v"))
+    return tuple(int(n) for n in match.groups()) if match else None
+
+
+def parse_loose_version(text):
+    """Returns a tuple of numbers for versions like "27.3", "0.0.10" or
+    "36.1.bcr.1" (BCR patch suffix ignored), or None for pre-releases."""
+    text = re.sub(r"\.bcr\.\d+$", "", text.strip())
+    if not re.fullmatch(r"\d+(\.\d+)*", text):
+        return None
+    return tuple(int(n) for n in text.split("."))
+
+
+def major_line(version):
+    """The part of a version that changes on a breaking release: the major, or
+    the minor for 0.x versions (as with npm's caret ranges)."""
+    return version[:1] if version[0] > 0 else version[:2]
+
+
+def newest_in_line(current, releases, now, cooldown_days):
+    """Returns (version, date) of the newest release in current's major line
+    released at least cooldown_days before now, if newer than current.
+
+    releases: iterable of (version string, release datetime)."""
+    line = major_line(current)
+    cutoff = now - datetime.timedelta(days=cooldown_days)
+    best = None
+    for text, released in releases:
+        version = parse_version(text)
+        if not version or major_line(version) != line or released > cutoff:
+            continue
+        if version > current and (best is None or version > best[0]):
+            best = (version, released)
+    return best
+
+
+def fmt(version):
+    return ".".join(str(n) for n in version)
+
+
+# --- File edits ----------------------------------------------------------------
+
+def node_version(module):
+    match = NODE_VERSION_ATTR.search(module)
+    return match.group(2) if match else None
+
+
+def set_node_version(module, version):
+    return NODE_VERSION_ATTR.sub(lambda m: m.group(1) + version + m.group(3), module, count=1)
+
+
+def pnpm_version(module):
+    call = PNPM_CALL.search(module)
+    match = call and PNPM_VERSION_ATTR.search(call.group("args"))
+    return match.group(1) if match else None
+
+
+def set_pnpm_version(module, version, integrity):
+    """Rewrites the pnpm.pnpm(...) call with the version and its integrity."""
+    replacement = ('pnpm.pnpm(\n    pnpm_version = "%s",\n    pnpm_version_integrity = "%s",\n)'
+                   % (version, integrity))
+    return PNPM_CALL.sub(lambda m: replacement, module, count=1)
+
+
+def package_manager_version(package_json):
+    match = PACKAGE_MANAGER.search(package_json)
+    return match.group(2) if match else None
+
+
+def set_package_manager_version(package_json, version):
+    return PACKAGE_MANAGER.sub(lambda m: m.group(1) + version + m.group(3), package_json, count=1)
+
+
+def bazel_deps(module):
+    return BAZEL_DEP.findall(module)
+
+
+def npm_dependencies(package_json):
+    """Returns (name, spec) of the direct dependencies in package.json."""
+    data = json.loads(package_json)
+    deps = []
+    for field in ("dependencies", "devDependencies"):
+        deps.extend((data.get(field) or {}).items())
+    return deps
+
+
+def spec_version(spec):
+    """Returns the lowest version a range like "^1.2.3", "~1.2" or "1.2.3"
+    allows, or None for anything else (URLs, tags, workspace:, ...)."""
+    match = re.fullmatch(r"[\^~]?(\d+)(?:\.(\d+))?(?:\.(\d+))?", spec.strip())
+    if not match:
+        return None
+    return tuple(int(n or 0) for n in match.groups())
+
+
+# --- Network -------------------------------------------------------------------
+
+def fetch_json(url, accept="application/json"):
+    request = urllib.request.Request(url, headers={
+        "Accept": accept, "User-Agent": "update_toolchain_versions"})
+    with urllib.request.urlopen(request, timeout=60) as response:
+        return json.load(response)
+
+
+def parse_time(value):
+    if len(value) == 10:  # A date, e.g. in nodejs.org/dist/index.json.
+        value += "T00:00:00Z"
+    return datetime.datetime.fromisoformat(value.replace("Z", "+00:00"))
+
+
+def node_releases():
+    return [(entry["version"].lstrip("v"), parse_time(entry["date"]))
+            for entry in fetch_json(NODE_INDEX)]
+
+
+def npm_package(name):
+    return fetch_json(NPM_REGISTRY + urllib.parse.quote(name, safe="@"))
+
+
+def npm_releases(package):
+    return [(version, parse_time(time)) for version, time in package["time"].items()
+            if version not in ("created", "modified")]
+
+
+def npm_latest(name):
+    """The version of the "latest" dist-tag."""
+    data = fetch_json(NPM_REGISTRY + urllib.parse.quote(name, safe="@"),
+                      accept="application/vnd.npm.install-v1+json")
+    return data["dist-tags"]["latest"]
+
+
+def end_of_life(product):
+    """Returns {cycle: entry} from endoflife.date, or {} if unavailable."""
+    try:
+        return {str(entry["cycle"]): entry for entry in fetch_json(EOL_API % product)}
+    except (urllib.error.URLError, ValueError, KeyError) as e:
+        print("WARNING: no end-of-life data for %s: %s" % (product, e), file=sys.stderr)
+        return {}
+
+
+# --- Updates -------------------------------------------------------------------
+
+def plan_updates(module, package_json, now):
+    """Returns a list of updates: dicts with name, current, new, released and,
+    for pnpm, integrity."""
+    updates = []
+    current = parse_version(node_version(module) or "")
+    if current:
+        best = newest_in_line(current, node_releases(), now, NODE_COOLDOWN_DAYS)
+        if best:
+            updates.append({"name": "Node.js", "current": fmt(current), "new": fmt(best[0]),
+                            "released": best[1]})
+    else:
+        print("WARNING: no node.toolchain(node_version) in %s" % MODULE_BAZEL, file=sys.stderr)
+
+    current = parse_version(pnpm_version(module) or "")
+    if current:
+        package = npm_package("pnpm")
+        best = newest_in_line(current, npm_releases(package), now, PNPM_COOLDOWN_DAYS)
+        if best:
+            version = fmt(best[0])
+            updates.append({"name": "pnpm", "current": fmt(current), "new": version,
+                            "released": best[1],
+                            "integrity": package["versions"][version]["dist"]["integrity"]})
+    else:
+        print("WARNING: no pnpm.pnpm(pnpm_version) in %s" % MODULE_BAZEL, file=sys.stderr)
+    return updates
+
+
+def apply_updates(module, package_json, updates):
+    for update in updates:
+        if update["name"] == "Node.js":
+            module = set_node_version(module, update["new"])
+        elif update["name"] == "pnpm":
+            module = set_pnpm_version(module, update["new"], update["integrity"])
+            package_json = set_package_manager_version(package_json, update["new"])
+    return module, package_json
+
+
+def update_summary(updates):
+    if not updates:
+        return "The Node.js and pnpm toolchain versions are up to date.\n"
+    lines = [
+        "Updates the toolchain versions that the Bazel build downloads, within the current "
+        "major version. Generated by `scripts/update_toolchain_versions` (Toolchain updates "
+        "workflow); the branch is rewritten when the updates change.",
+        "",
+        "| Toolchain | Current | New | Released |",
+        "|---|---|---|---|",
+    ]
+    for u in updates:
+        lines.append("| %s | `%s` | `%s` | %s |"
+                     % (u["name"], u["current"], u["new"], u["released"].date().isoformat()))
+    lines += [
+        "",
+        "Release notes: [Node.js](https://github.com/nodejs/node/releases), "
+        "[pnpm](https://github.com/pnpm/pnpm/releases). `MODULE.bazel.lock` is refreshed with "
+        "the new versions.",
+        "",
+        "To merge: check the release notes, approve, and comment `/gcbrun`; auto-merge is enabled "
+        "by the Dependency PR auto-merge workflow.",
+    ]
+    return "\n".join(lines) + "\n"
+
+
+# --- Majors report -------------------------------------------------------------
+
+def eol_note(eol, cycle):
+    entry = eol.get(str(cycle))
+    if not entry:
+        return ""
+    value = entry.get("eol")
+    if value is True:
+        return "end of life"
+    if value:
+        return "end of life %s" % value
+    return ""
+
+
+def toolchain_majors(module, bazel_version):
+    """Rows (name, current, newest in current major, newest major, note)."""
+    rows = []
+    bazel = parse_version(bazel_version or "")
+    if bazel:
+        eol = end_of_life("bazel")
+        newest = max((parse_version(e.get("latest") or "") or (0,) for e in eol.values()),
+                     default=None)
+        same = parse_version((eol.get(str(bazel[0])) or {}).get("latest") or "")
+        note = eol_note(eol, bazel[0])
+        rows.append(("Bazel", fmt(bazel), fmt(same) if same and same > bazel else "",
+                     fmt(newest) if newest and newest[0] > bazel[0] else "",
+                     "%s; Cloud Build uses `gcr.io/cloud-builders/bazel:%s`"
+                     % (note or "-", fmt(bazel))))
+
+    node = parse_version(node_version(module) or "")
+    if node:
+        eol = end_of_life("nodejs")
+        lts = [parse_version(e.get("latest") or "") for e in eol.values() if e.get("lts")]
+        lts = [v for v in lts if v]
+        newest = max(lts) if lts else None
+        rows.append(("Node.js (LTS)", fmt(node), "",
+                     fmt(newest) if newest and newest[0] > node[0] else "",
+                     eol_note(eol, node[0])))
+
+    pnpm = parse_version(pnpm_version(module) or "")
+    if pnpm:
+        eol = end_of_life("pnpm")
+        newest = max((parse_version(e.get("latest") or "") or (0,) for e in eol.values()),
+                     default=None)
+        rows.append(("pnpm", fmt(pnpm), "",
+                     fmt(newest) if newest and newest[0] > pnpm[0] else "",
+                     eol_note(eol, pnpm[0])))
+    return [r for r in rows if r[2] or r[3]]
+
+
+def bazel_module_majors(module):
+    """Rows (name, current, newest) of Bazel modules with a newer major."""
+    def check(dep):
+        name, version = dep
+        current = parse_loose_version(version)
+        try:
+            versions = fetch_json(BCR_METADATA % name)["versions"]
+        except (urllib.error.URLError, ValueError, KeyError) as e:
+            print("WARNING: %s: %s" % (name, e), file=sys.stderr)
+            return None
+        parsed = [v for v in (parse_loose_version(v) for v in versions) if v]
+        newest = max(parsed) if parsed else None
+        if current and newest and major_line(newest) > major_line(current):
+            return (name, version, fmt(newest))
+        return None
+    with concurrent.futures.ThreadPoolExecutor(8) as pool:
+        return [r for r in pool.map(check, bazel_deps(module)) if r]
+
+
+def npm_majors(package_json, node_major=None):
+    """Rows (name, current spec, latest) of npm dependencies with a newer major.
+    @types/node is compared with the Node.js toolchain major, not the latest."""
+    def check(dep):
+        name, spec = dep
+        current = spec_version(spec)
+        if not current:
+            return None
+        try:
+            latest = npm_latest(name)
+        except (urllib.error.URLError, ValueError, KeyError) as e:
+            print("WARNING: %s: %s" % (name, e), file=sys.stderr)
+            return None
+        version = parse_version(latest)
+        if name == "@types/node" and node_major:
+            if current[0] < node_major:
+                return (name, spec, "%s.x (the Node.js toolchain major)" % node_major)
+            return None
+        if version and major_line(version) > major_line(current):
+            return (name, spec, latest)
+        return None
+    with concurrent.futures.ThreadPoolExecutor(8) as pool:
+        return sorted(r for r in pool.map(check, npm_dependencies(package_json)) if r)
+
+
+def majors_report(toolchain, modules, npm, now):
+    lines = [
+        "Major versions newer than the ones in use. They aren't updated automatically: plan "
+        "each upgrade as a separate change (minor and patch versions are updated by Dependabot "
+        "and the Toolchain updates workflow). This issue is updated weekly by the Toolchain "
+        "updates workflow (`scripts/update_toolchain_versions --majors-report`).",
+        "",
+        "_Last updated: %s_" % now.date().isoformat(),
+        "",
+    ]
+    if toolchain:
+        lines += ["### Toolchain", "", "| Toolchain | In use | Newest in this major | "
+                  "Newest major | Support |", "|---|---|---|---|---|"]
+        lines += ["| %s | `%s` | %s | %s | %s |" % (name, cur, "`%s`" % same if same else "-",
+                                                    "`%s`" % new if new else "-", note or "-")
+                  for name, cur, same, new, note in toolchain]
+        lines.append("")
+    if modules:
+        lines += ["### Bazel modules (`MODULE.bazel`)", "", "| Module | In use | Newest |",
+                  "|---|---|---|"]
+        lines += ["| `%s` | `%s` | `%s` |" % row for row in modules]
+        lines.append("")
+    if npm:
+        lines += ["### npm (`package.json`)", "", "| Package | In use | Latest |", "|---|---|---|"]
+        lines += ["| `%s` | `%s` | `%s` |" % row for row in npm]
+        lines.append("")
+    if not (toolchain or modules or npm):
+        lines += ["Everything is on the newest major version.", ""]
+    lines.append(REPORT_MARKER)
+    return "\n".join(lines) + "\n"
+
+
+# --- Main ----------------------------------------------------------------------
+
+def read(path):
+    with open(path) as f:
+        return f.read()
+
+
+def write(path, text):
+    with open(path, "w") as f:
+        f.write(text)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    parser.add_argument("--dry-run", action="store_true", help="Don't change any files.")
+    parser.add_argument("--summary", help="Write a markdown summary of the updates here.")
+    parser.add_argument("--majors-report", metavar="FILE",
+                        help="Only write the majors report here; don't update anything.")
+    args = parser.parse_args()
+    now = datetime.datetime.now(datetime.timezone.utc)
+    module, package_json = read(MODULE_BAZEL), read(PACKAGE_JSON)
+
+    if args.majors_report:
+        bazel_version = read(BAZEL_VERSION_FILE).strip() if os.path.exists(BAZEL_VERSION_FILE) \
+            else None
+        report = majors_report(toolchain_majors(module, bazel_version),
+                               bazel_module_majors(module),
+                               npm_majors(package_json, (parse_version(node_version(module) or "")
+                                                         or (None,))[0]),
+                               now)
+        write(args.majors_report, report)
+        print(report)
+        return
+
+    if package_manager_version(package_json) != pnpm_version(module):
+        print("WARNING: packageManager in %s (%s) differs from pnpm_version in %s (%s)"
+              % (PACKAGE_JSON, package_manager_version(package_json), MODULE_BAZEL,
+                 pnpm_version(module)), file=sys.stderr)
+    updates = plan_updates(module, package_json, now)
+    for u in updates:
+        print("%s: %s -> %s (released %s)" % (u["name"], u["current"], u["new"],
+                                               u["released"].date()))
+    if not updates:
+        print("The Node.js and pnpm toolchain versions are up to date.")
+    if updates and not args.dry_run:
+        new_module, new_package_json = apply_updates(module, package_json, updates)
+        write(MODULE_BAZEL, new_module)
+        write(PACKAGE_JSON, new_package_json)
+    if args.summary:
+        write(args.summary, update_summary(updates))
+
+
+if __name__ == "__main__":
+    main()

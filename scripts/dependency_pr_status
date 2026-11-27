@@ -5,9 +5,9 @@ New package versions become installable in the registry that the Cloud Build
 tests use only some time after they are published, so a PR from Dependabot or
 from the security updates job (scripts/update_vulnerable_deps) can fail there
 although the code is fine. For each such open PR that updates npm packages
-(Dependabot's npm branches and deps/security-updates; Dependabot PRs for other
-ecosystems, e.g. GitHub Actions or Bazel modules, don't depend on the npm
-registry and are skipped), this script:
+(Dependabot's npm branches, deps/security-updates and deps/toolchain-updates;
+Dependabot PRs for other ecosystems, e.g. GitHub Actions or Bazel modules,
+don't depend on the npm registry and are skipped), this script:
 
   - adds the "waiting-for-dependencies" label and a one-time comment if the
     Cloud Build checks failed but the build with the public npm registry
@@ -41,7 +41,9 @@ MAX_WAIT_DAYS = int(os.environ.get("MAX_WAIT_DAYS", "21"))
 # dependabot/<ecosystem>/..., and the npm ones use "npm_and_yarn".
 DEPENDABOT = "dependabot[bot]"
 DEPENDABOT_NPM_PREFIX = "dependabot/npm_and_yarn/"
-BOT_BRANCHES = {"deps/security-updates"}
+# Branches of the Security updates and Toolchain updates workflows (pnpm is
+# installed from the npm registry too).
+BOT_BRANCHES = {"deps/security-updates", "deps/toolchain-updates"}
 CLOUD_BUILD_APP = "google-cloud-build"
 # Builds with the public npm registry: if it passes, the code itself is fine.
 PUBLIC_BUILD_CHECK = "Build packages and smoke test bundle (Linux)"
@@ -153,7 +155,8 @@ def ensure_comment(pr):
 
 def is_npm_dependency_pr(pr):
     """Whether a PR updates npm packages: from Dependabot's npm branches or the
-    security updates branch, in this repo."""
+    branches of the Security updates and Toolchain updates workflows, in this
+    repo."""
     ref = pr["head"]["ref"]
     if (pr["head"].get("repo") or {}).get("full_name") != REPO:
         return False

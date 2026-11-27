@@ -1,0 +1,185 @@
+name: Toolchain updates
+
+# Two jobs (see scripts/update_toolchain_versions):
+#
+# - Daily: updates the Node.js and pnpm versions in MODULE.bazel and
+#   package.json within their current major version, refreshes
+#   MODULE.bazel.lock, and opens or updates a PR from the deps/toolchain-updates
+#   branch (or closes it when nothing is left to update). The branch is
+#   rewritten when the updates change, so don't push changes to it. The
+#   Dependency PR auto-merge workflow enables auto-merge on the PR.
+# - Weekly: updates the "Major updates available" issue, which lists the major
+#   versions newer than the ones in use (toolchain, Bazel modules, npm).
+#
+# The PR is pushed and opened with an installation token of the repo's GitHub
+# App (repo secrets SECURITY_UPDATES_APP_ID and SECURITY_UPDATES_PRIVATE_KEY;
+# contents and pull requests: read and write), so that it triggers the GitHub
+# Actions workflows. The issue is updated with GITHUB_TOKEN.
+
+on:
+  schedule:
+    - cron: "30 1 * * *" # Daily at 01:30 UTC: toolchain updates.
+    - cron: "0 5 * * 1" # Mondays at 05:00 UTC: majors report.
+  workflow_dispatch:
+    inputs:
+      job:
+        description: Which job to run.
+        type: choice
+        options:
+          - toolchain-updates
+          - majors-report
+        default: toolchain-updates
+      dry-run:
+        description: >-
+          Only show the planned updates or the report in the run summary; don't
+          push, open a PR or update the issue.
+        type: boolean
+        default: true
+
+permissions: {}
+
+concurrency:
+  group: toolchain-updates-${{ github.event.schedule || inputs.job }}
+  cancel-in-progress: false
+
+jobs:
+  update:
+    name: Update toolchain versions
+    if: >-
+      github.event.schedule == '30 1 * * *' ||
+      (github.event_name == 'workflow_dispatch' && inputs.job == 'toolchain-updates')
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read # Check out the repo; writes use the GitHub App token.
+    env:
+      BRANCH: deps/toolchain-updates
+      DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Update toolchain versions
+        run: |
+          ./scripts/update_toolchain_versions --summary "${RUNNER_TEMP}/summary.md"
+          cat "${RUNNER_TEMP}/summary.md" >> "${GITHUB_STEP_SUMMARY}"
+          git diff --stat
+
+      - name: Setup Bazelisk
+        uses: bazelbuild/setup-bazelisk@b39c379c82683a5f25d34f0d062761f62693e0b2 # v3.0.0
+
+      # `bazel mod deps` fails on an unused module extension of
+      # aspect_rules_rollup, so the lockfile is refreshed by loading all targets.
+      # MODULE.bazel sets `use_home_npmrc = True`, which requires ~/.npmrc.
+      - name: Refresh MODULE.bazel.lock
+        run: |
+          if git diff --quiet -- MODULE.bazel; then
+            echo "MODULE.bazel is unchanged."
+            exit 0
+          fi
+          touch ~/.npmrc
+          bazel build --nobuild --lockfile_mode=update //...
+          bazel build --nobuild --lockfile_mode=error //...
+          git diff --stat
+
+      - name: Create a GitHub App token
+        id: app-token
+        if: env.DRY_RUN != 'true'
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          app-id: ${{ secrets.SECURITY_UPDATES_APP_ID }}
+          private-key: ${{ secrets.SECURITY_UPDATES_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+
+      - name: Open, update or close the PR
+        if: env.DRY_RUN != 'true'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
+          FILES: MODULE.bazel MODULE.bazel.lock package.json
+        run: |
+          set -euo pipefail
+          title="Update Node.js and pnpm toolchain versions"
+          existing="$(gh pr list --head "${BRANCH}" --state open --json number --jq '.[0].number // empty')"
+          read -r -a files <<< "${FILES}"
+
+          if git diff --quiet -- "${files[@]}"; then
+            echo "No updates."
+            if [[ -n "${existing}" ]]; then
+              gh pr close "${existing}" --delete-branch \
+                --comment "The toolchain versions are up to date; closing."
+            fi
+            exit 0
+          fi
+
+          # Don't push if the PR already has exactly these changes; only
+          # refresh its description.
+          if [[ -n "${existing}" ]] && git fetch -q origin "${BRANCH}" &&
+             git diff --quiet FETCH_HEAD -- "${files[@]}"; then
+            echo "The PR is up to date; only updating its description."
+            gh pr edit "${existing}" --body-file "${RUNNER_TEMP}/summary.md"
+            exit 0
+          fi
+
+          # Commit as the GitHub App's bot user.
+          bot="${APP_SLUG}[bot]"
+          bot_id="$(gh api "/users/${bot}" --jq .id)"
+          git config user.name "${bot}"
+          git config user.email "${bot_id}+${bot}@users.noreply.github.com"
+          git switch -c "${BRANCH}"
+          git commit -q -m "${title}" -- "${files[@]}"
+          auth="$(printf 'x-access-token:%s' "${GH_TOKEN}" | base64 -w0)"
+          echo "::add-mask::${auth}"
+          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic ${auth}" \
+            push --force origin "HEAD:refs/heads/${BRANCH}"
+
+          if [[ -n "${existing}" ]]; then
+            gh pr edit "${existing}" --title "${title}" --body-file "${RUNNER_TEMP}/summary.md"
+          else
+            gh pr create --base "${GITHUB_REF_NAME}" --head "${BRANCH}" \
+              --title "${title}" --body-file "${RUNNER_TEMP}/summary.md"
+          fi
+
+  majors:
+    name: Update the major updates issue
+    if: >-
+      github.event.schedule == '0 5 * * 1' ||
+      (github.event_name == 'workflow_dispatch' && inputs.job == 'majors-report')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read # Check out the repo.
+      issues: write # Create the label and create or edit the issue.
+    env:
+      DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run }}
+      LABEL: major-updates
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Write the majors report
+        run: |
+          ./scripts/update_toolchain_versions --majors-report "${RUNNER_TEMP}/majors.md" > /dev/null
+          cat "${RUNNER_TEMP}/majors.md" >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Create or update the issue
+        if: env.DRY_RUN != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          title="Major updates available"
+          gh label create "${LABEL}" --color 5319e7 \
+            --description "Major versions of dependencies newer than the ones in use" 2>/dev/null || true
+          existing="$(gh issue list --label "${LABEL}" --state open --json number --jq '.[0].number // empty')"
+          if [[ -n "${existing}" ]]; then
+            gh issue edit "${existing}" --title "${title}" --body-file "${RUNNER_TEMP}/majors.md"
+          else
+            gh issue create --title "${title}" --label "${LABEL}" --body-file "${RUNNER_TEMP}/majors.md"
+          fi

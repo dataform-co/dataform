@@ -44,6 +44,9 @@ jobs:
       - name: Run dependency PR status script tests
         run: ./scripts/dependency_pr_status_test.py
 
+      - name: Run toolchain updates script tests
+        run: ./scripts/update_toolchain_versions_test.py
+
   # Unit and integration tests run on Cloud Build (cloudbuild-test.yaml); this job only
   # builds the packages and the smoke test bundle that the Windows job needs.
   build-linux:
