@@ -62,7 +62,7 @@ export function defaultCoreSourcePaths(workspaceRoot = "."): ICoreSourcePaths {
 }
 
 export function loadCoreDocData(paths: ICoreSourcePaths = defaultCoreSourcePaths()): ICoreDocData {
-  const protoRoot = loadDataformProtos(paths.protosDir);
+  const protoRoot = loadDataformProtos(paths.protosDir, ["configs.proto"]);
   return {
     workflowSettingsFields: extractWorkflowSettingsFields(protoRoot),
     sqlxContextFunctions: extractSqlxContextFunctions(paths.contextablesPath),

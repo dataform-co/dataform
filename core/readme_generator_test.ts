@@ -10,7 +10,7 @@ import {
   generateCoreReadme,
   ICoreDocData,
 } from "df/tools/docs/core_readme_generator";
-import { extractFirstProtoParagraph } from "df/tools/docs/proto_extractor";
+import { extractFirstProtoParagraph, loadDataformProtos } from "df/tools/docs/proto_extractor";
 import { extractCoreExports } from "df/tools/docs/ts_extractor";
 
 function block(name: string, ...content: string[]): string {
@@ -208,6 +208,24 @@ suite("core readme generator", () => {
 
       fs.writeFileSync(pkgIdx, 'export { version } from "df/core";\n');
       expect(() => extractCoreExports(coreIdx, pkgIdx)).to.throw(/Export mismatch between/);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  test("loadDataformProtos fails fast when an entry proto references an unimported message", () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "proto-standalone-test-"));
+    try {
+      fs.writeFileSync(
+        path.join(tmpDir, "core.proto"),
+        'syntax = "proto3";\npackage dataform;\nmessage OnlyInCore { string name = 1; }\n',
+      );
+      fs.writeFileSync(
+        path.join(tmpDir, "configs.proto"),
+        'syntax = "proto3";\npackage dataform;\nmessage WorkflowSettings { OnlyInCore x = 1; }\n',
+      );
+
+      expect(() => loadDataformProtos(tmpDir, ["configs.proto"])).to.throw(Error, /OnlyInCore/);
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
