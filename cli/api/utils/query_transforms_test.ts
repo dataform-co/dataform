@@ -3,6 +3,7 @@ import { expect } from "chai";
 import {
   concatenateQueries,
   setsDatasetId,
+  stripCommentsAndQuotedContent,
   terminateStatements,
   wrapWithCreateSchemaIfNotExists,
 } from "df/cli/api/utils/query_transforms";
@@ -66,18 +67,23 @@ suite("concatenateQueries", () => {
     expect(terminated("SELECT 'it\\'s -- x'")).equals("SELECT 'it\\'s -- x';\nSELECT 2");
   });
 
-  test("doesn't treat \\ as an escape inside raw string or bytes literals", () => {
+  test("treats \\ before a quote as part of raw string and bytes literals, like BigQuery", () => {
+    // In raw literals the backslash is kept, but it still keeps the next quote from closing the
+    // literal: r'a\'' is the string a\', and r'\' is unterminated.
     const terminated = (statement: string) => concatenateQueries([statement, "SELECT 2"]);
-    expect(terminated("SELECT r'\\' -- comment")).equals("SELECT r'\\'; -- comment\nSELECT 2");
-    expect(terminated("SELECT REPLACE(p, r'\\', '/'), 'ok' -- don't fail")).equals(
-      "SELECT REPLACE(p, r'\\', '/'), 'ok'; -- don't fail\nSELECT 2",
+    expect(terminated("SELECT r'a\\'' -- comment")).equals("SELECT r'a\\''; -- comment\nSELECT 2");
+    expect(terminated("SELECT REPLACE('p', r'\\\\', '/'), 'ok' -- don't fail")).equals(
+      "SELECT REPLACE('p', r'\\\\', '/'), 'ok'; -- don't fail\nSELECT 2",
     );
-    expect(terminated('R"\\" -- comment')).equals('R"\\"; -- comment\nSELECT 2');
-    expect(terminated("SELECT r'''a\\''' -- comment")).equals(
-      "SELECT r'''a\\'''; -- comment\nSELECT 2",
+    expect(terminated('SELECT R"a\\"b" -- comment')).equals(
+      'SELECT R"a\\"b"; -- comment\nSELECT 2',
     );
-    expect(terminated("SELECT rb'\\' -- comment")).equals("SELECT rb'\\'; -- comment\nSELECT 2");
-    expect(terminated('SELECT BR"\\" -- comment')).equals('SELECT BR"\\"; -- comment\nSELECT 2');
+    expect(terminated("SELECT r'''a\\'''' -- comment")).equals(
+      "SELECT r'''a\\''''; -- comment\nSELECT 2",
+    );
+    expect(terminated("SELECT rb'\\'' -- comment")).equals("SELECT rb'\\''; -- comment\nSELECT 2");
+    expect(terminated('SELECT BR"\\"" -- comment')).equals('SELECT BR"\\""; -- comment\nSELECT 2');
+    expect(terminated("SELECT r'\\\\' -- comment")).equals("SELECT r'\\\\'; -- comment\nSELECT 2");
     // Non-raw `b` prefix and SQL keywords ending in `r` still escape quotes with `\`.
     expect(terminated("SELECT b'it\\'s -- x'")).equals("SELECT b'it\\'s -- x';\nSELECT 2");
     expect(terminated("SELECT flag OR'it\\'s -- x'")).equals(
@@ -174,8 +180,10 @@ suite("wrapWithCreateSchemaIfNotExists", () => {
   });
 
   test("terminates a raw string ending in a backslash before a trailing comment", () => {
-    expect(wrapWithCreateSchemaIfNotExists("project", "dataset", "SELECT r'\\' -- comment")).equals(
-      "create schema if not exists `project.dataset`;\nbegin\nSELECT r'\\'; -- comment\nend;",
+    expect(
+      wrapWithCreateSchemaIfNotExists("project", "dataset", "SELECT r'\\\\' -- comment"),
+    ).equals(
+      "create schema if not exists `project.dataset`;\nbegin\nSELECT r'\\\\'; -- comment\nend;",
     );
   });
 
@@ -213,9 +221,9 @@ suite("setsDatasetId", () => {
     expect(setsDatasetId("SELECT 'SET @@dataset_id = \"my_ds\"'")).equals(false);
     expect(setsDatasetId("SELECT \"SET @@dataset_id = 'my_ds'\"")).equals(false);
     expect(setsDatasetId("SELECT '''\nSET @@dataset_id = 'my_ds'\n'''")).equals(false);
-    expect(setsDatasetId("SELECT r'\\' -- not a comment\n, 'SET @@dataset_id = \"my_ds\"'")).equals(
-      false,
-    );
+    expect(
+      setsDatasetId("SELECT r'a\\'' -- not a comment\n, 'SET @@dataset_id = \"my_ds\"'"),
+    ).equals(false);
     expect(setsDatasetId("SELECT * FROM `SET @@dataset_id = 'my_ds'`")).equals(false);
   });
 
@@ -241,5 +249,43 @@ suite("terminateStatements", () => {
 
   test("returns empty string for empty input", () => {
     expect(terminateStatements([])).equals("");
+  });
+});
+
+suite("stripCommentsAndQuotedContent", () => {
+  test("keeps a semicolon after a raw string with an escaped quote", () => {
+    // r'a\'' is one literal, so the semicolon after it is code, and the next ' opens a literal.
+    expect(stripCommentsAndQuotedContent("SELECT r'a\\'' AS s; SELECT 'b'")).equals(
+      "SELECT r'   ' AS s; SELECT ' '",
+    );
+  });
+
+  test("keeps the length of unterminated literals", () => {
+    for (const statement of [
+      "SELECT '''a",
+      "SELECT 'a",
+      "SELECT `a",
+      "SELECT r'\\",
+      "SELECT 'a\\",
+    ]) {
+      expect(stripCommentsAndQuotedContent(statement).length).equals(statement.length);
+    }
+  });
+});
+
+suite("query transforms on unterminated literals and lone \\r", () => {
+  test("puts the terminator after an unterminated literal, not inside it", () => {
+    expect(concatenateQueries(["SELECT 'abc", "SELECT 2"])).equals("SELECT 'abc;\nSELECT 2");
+    expect(concatenateQueries(["SELECT r'\\", "SELECT 2"])).equals("SELECT r'\\;\nSELECT 2");
+    expect(wrapWithCreateSchemaIfNotExists("p", "d", "SELECT 'abc  def")).equals(
+      "create schema if not exists `p.d`;\nbegin\nSELECT 'abc  def;\nend;",
+    );
+  });
+
+  test("ends a line comment at a lone \\r, like BigQuery", () => {
+    expect(concatenateQueries(["SELECT 1 -- c\rFROM x", "SELECT 2"])).equals(
+      "SELECT 1 -- c\rFROM x;\nSELECT 2",
+    );
+    expect(setsDatasetId("SELECT 1 # c\rSET @@dataset_id = 'd'")).equals(true);
   });
 });

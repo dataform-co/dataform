@@ -1,27 +1,23 @@
 /**
- * Whether the string or bytes literal opening quote (`'` or `"`) at `quoteIndex` is preceded by a
- * GoogleSQL raw literal prefix (`r`, `rb` or `br`, case-insensitive).
- */
-function hasRawLiteralPrefix(statement: string, quoteIndex: number): boolean {
-  const prefix = statement.slice(Math.max(0, quoteIndex - 3), quoteIndex);
-  return /(?:^|[^a-zA-Z0-9_])(?:r|rb|br)$/i.test(prefix);
-}
-
-/**
  * Returns `statement` with comments (`--`, `#` and `/* *\/`) and the contents of string/bytes
  * literals (single, double and triple quoted, including raw literals) and quoted identifiers
  * replaced with spaces of the same length. Preserving lengths keeps character indices aligned
- * with `statement`, while leaving only unquoted SQL tokens and empty quotes.
+ * with `statement`, while leaving only unquoted SQL tokens and empty quotes. An unterminated
+ * literal runs to the end of the statement, and its last character is replaced with its quote
+ * character rather than a space, so that it still ends in code.
+ *
+ * Exported only for unit testing; not intended for use outside this file.
  */
-function stripCommentsAndQuotedContent(statement: string): string {
+export function stripCommentsAndQuotedContent(statement: string): string {
   let result = "";
   let i = 0;
   while (i < statement.length) {
     const char = statement[i];
     const next = statement[i + 1];
     if ((char === "-" && next === "-") || char === "#") {
-      const newline = statement.indexOf("\n", i);
-      const end = newline === -1 ? statement.length : newline;
+      // BigQuery also ends a line comment at a lone \r.
+      const newline = statement.slice(i).search(/[\r\n]/);
+      const end = newline === -1 ? statement.length : i + newline;
       result += " ".repeat(end - i);
       i = end;
     } else if (char === "/" && next === "*") {
@@ -30,20 +26,26 @@ function stripCommentsAndQuotedContent(statement: string): string {
       result += " ".repeat(end - i);
       i = end;
     } else if (char === "'" || char === '"' || char === "`") {
-      const isRaw = char !== "`" && hasRawLiteralPrefix(statement, i);
       const tripleQuote = char.repeat(3);
       const closing = char !== "`" && statement.startsWith(tripleQuote, i) ? tripleQuote : char;
       const start = i;
       i += closing.length;
       while (i < statement.length && !statement.startsWith(closing, i)) {
-        // Skip escaped characters, e.g. \' inside a non-raw single-quoted string.
-        i += !isRaw && statement[i] === "\\" ? 2 : 1;
+        // A backslash keeps the next character from closing the literal, e.g. \' in 'it\'s'. This
+        // also applies to raw literals, where the backslash is kept: r'a\'' is the string a\'.
+        i += statement[i] === "\\" ? 2 : 1;
       }
-      i = Math.min(i + closing.length, statement.length);
-      result +=
-        closing +
-        " ".repeat(Math.max(0, i - start - 2 * closing.length)) +
-        (i - start >= 2 * closing.length ? closing : "");
+      if (i < statement.length) {
+        i += closing.length;
+        result += closing + " ".repeat(i - start - 2 * closing.length) + closing;
+      } else {
+        // An unterminated literal runs to the end of the statement. It's replaced up to there, and
+        // ends with a quote rather than a space, so that it still counts as code (e.g. a statement
+        // terminator goes after it, not inside it).
+        const bodyLength = statement.length - start - closing.length;
+        i = statement.length;
+        result += closing + (bodyLength > 0 ? " ".repeat(bodyLength - 1) + char : "");
+      }
     } else {
       result += char;
       i++;
