@@ -97,7 +97,11 @@ function computeIncludedActionKeys(
   // Determine actions selected with --tag option and update applicable actions
   if (hasTagSelector) {
     keyedActions.forEach(({ action, key }) => {
-      if (action.tags?.some((tag) => runConfig.tags.includes(tag))) {
+      if (
+        runConfig.tagsIntersection
+          ? runConfig.tags.every((tag) => action.tags?.includes(tag))
+          : action.tags?.some((tag) => runConfig.tags.includes(tag))
+      ) {
         includedActionKeys.add(key);
       }
     });

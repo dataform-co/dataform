@@ -197,6 +197,7 @@ export const runCommand: ICommand<IRunArgs> = {
         includeDependencies: argv.includeDeps,
         includeDependents: argv.includeDependents,
         tags: argv.tags,
+        tagsIntersection: argv.tagsIntersection,
         timeoutMillis: argv.executionTimeout || undefined,
         jitTimeoutMillis: argv.jitTimeout || undefined,
       },

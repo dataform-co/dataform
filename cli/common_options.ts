@@ -98,6 +98,25 @@ export const timeoutOption: INamedOption<yargs.Options, ITimeoutArgs> = {
   docs: { default: `\`'${DEFAULT_COMPILATION_TIMEOUT_MILLIS / 1000}s'\`` },
 };
 
+// Checks that an intersection flag has at least one tag, and no empty tags: in intersection mode an
+// empty entry (e.g. from a trailing comma) would be a required tag that no action is likely to have.
+export const requiresNonEmptyTags =
+  (name: string, tags: { name: string }) => (argv: yargs.Arguments) => {
+    if (!argv[name]) {
+      return;
+    }
+    const values = argv[tags.name] as string[] | undefined;
+    if (!(values?.length > 0)) {
+      throw new Error(`The --${name} flag requires at least one tag in --${tags.name}.`);
+    }
+    if (values.includes("")) {
+      throw new Error(
+        `The --${name} flag does not accept empty tags in --${tags.name} ` +
+          "(check for a trailing comma).",
+      );
+    }
+  };
+
 // It would be nice to use yargs' "implies" to implement this, but it doesn't work for some reason.
 export const requiresSelection =
   (name: string, actions: { name: string }, tags: { name: string }) => (argv: yargs.Arguments) => {

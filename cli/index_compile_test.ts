@@ -843,6 +843,50 @@ SELECT 1 as id
       expect(tableNames(result.stdout)).deep.equals(["upstream"]);
     });
 
+    test("--output-tags-intersection keeps only actions carrying every tag", async () => {
+      writeDefinitionFile(
+        projectDir,
+        "both.sqlx",
+        `config { type: "table", tags: ["daily", "finance"] }\nSELECT 1 AS id`,
+      );
+      const union = await runCli("compile", [
+        projectDir,
+        "--output-tags",
+        "daily,finance",
+        "--json",
+      ]);
+      expect(union.exitCode, union.stderr).equals(0);
+      expect(tableNames(union.stdout)).deep.equals(["both", "upstream"]);
+
+      const intersection = await runCli("compile", [
+        projectDir,
+        "--output-tags",
+        "daily,finance",
+        "--output-tags-intersection",
+        "--json",
+      ]);
+      expect(intersection.exitCode, intersection.stderr).equals(0);
+      expect(tableNames(intersection.stdout)).deep.equals(["both"]);
+    });
+
+    test("--output-tags-intersection without --output-tags is rejected", async () => {
+      const result = await runCli("compile", [projectDir, "--output-tags-intersection", "--json"]);
+      expect(result.exitCode).not.equals(0);
+      expect(result.stderr).contains("--output-tags-intersection");
+    });
+
+    test("--output-tags-intersection with an empty tag is rejected", async () => {
+      const result = await runCli("compile", [
+        projectDir,
+        "--output-tags",
+        "daily,",
+        "--output-tags-intersection",
+        "--json",
+      ]);
+      expect(result.exitCode).not.equals(0);
+      expect(result.stderr).contains("does not accept empty tags in --output-tags");
+    });
+
     test("selector matching nothing emits an empty graph and exits zero", async () => {
       const result = await runCli("compile", [projectDir, "--output-actions", "nope", "--json"]);
       expect(result.exitCode, result.stderr).equals(0);

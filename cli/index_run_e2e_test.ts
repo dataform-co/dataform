@@ -522,6 +522,49 @@ SELECT * FROM (SELECT 1 AS id) WHERE id >= min_id
     });
   });
 
+  test("--tags-intersection selects only actions with every tag, plus their dependents", async () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    await setupProject(tmpDirFixture, projectDir);
+    writeDefinitionFile(
+      projectDir,
+      "both.sqlx",
+      `config { type: "view", tags: ["a", "b"] }\nSELECT 1 AS id`,
+    );
+    writeDefinitionFile(
+      projectDir,
+      "only_a.sqlx",
+      `config { type: "view", tags: ["a"] }\nSELECT 1 AS id`,
+    );
+    writeDefinitionFile(
+      projectDir,
+      "only_b.sqlx",
+      `config { type: "view", tags: ["b"] }\nSELECT 1 AS id`,
+    );
+    writeDefinitionFile(
+      projectDir,
+      "both_child.sqlx",
+      `config { type: "view" }\nSELECT * FROM \${ref("both")}`,
+    );
+
+    const result = await runCli("run", [
+      projectDir,
+      "--credentials",
+      CREDENTIALS_PATH,
+      "--build-only",
+      "--json",
+      "--tags=a,b",
+      "--tags-intersection",
+      "--include-dependents",
+    ]);
+
+    expect(result.exitCode, `stdout:\n${result.stdout}\nstderr:\n${result.stderr}`).equals(0);
+    const executionGraph = JSON.parse(result.stdout);
+    expect(
+      executionGraph.actions.map((action: dataform.IExecutionAction) => action.target.name).sort(),
+    ).deep.equals(["both", "both_child"]);
+    expect(executionGraph.runConfig.tagsIntersection).equals(true);
+  });
+
   suite("json output", ({ before, beforeEach, after }) => {
     const dbadapter = new BigQueryDbAdapter(dfapi.credentials.read(CREDENTIALS_PATH));
     const uniqueDataset = `${JSON_OUTPUT_DATASET}_${makeUniqueSuffix()}`;

@@ -10,6 +10,7 @@ import {
   IProjectDirArgs,
   ITimeoutArgs,
   jsonOutputOption,
+  requiresNonEmptyTags,
   requiresSelection,
   splitCommas,
   timeoutOption,
@@ -37,6 +38,7 @@ export interface IRunArgs
   jitTimeout?: number | null;
   jobPrefix?: string | null;
   tags?: string[];
+  tagsIntersection?: boolean;
   jobLabels?: { [key: string]: string };
   buildOnly: boolean;
 }
@@ -100,10 +102,23 @@ export const overrideProtectedOption: INamedOption<yargs.Options, IRunArgs> = {
 export const tagsOption: INamedOption<yargs.Options, IRunArgs> = {
   name: "tags",
   option: {
-    describe: "Tags to filter the actions to run (comma-separated or repeatable).",
+    describe:
+      "Tags to filter the actions to run (comma-separated or repeatable). Selects actions with " +
+      "any of these tags, or all of them with --tags-intersection.",
     type: "array",
     coerce: splitCommas,
   },
+};
+
+export const tagsIntersectionOption: INamedOption<yargs.Options, IRunArgs> = {
+  name: "tags-intersection",
+  option: {
+    describe:
+      "Selects only actions that have every tag given in --tags, instead of any of them. " +
+      "Actions selected with --actions are still included. Requires --tags.",
+    type: "boolean",
+  },
+  check: requiresNonEmptyTags("tags-intersection", tagsOption),
 };
 
 export const includeDepsOption: INamedOption<yargs.Options, IRunArgs> = {
@@ -212,6 +227,7 @@ export const runOptions: Array<INamedOption<yargs.Options, IRunArgs>> = [
   actionRetryLimitOption,
   actionsOption,
   tagsOption,
+  tagsIntersectionOption,
   includeDepsOption,
   includeDependentsOption,
   fullRefreshOption,

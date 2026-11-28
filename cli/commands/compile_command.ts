@@ -61,6 +61,7 @@ export const compileCommand: ICommand<ICompileArgs> = {
           ? prune(compiledGraph, {
               actions: argv.outputActions,
               tags: argv.outputTags,
+              tagsIntersection: argv.outputTagsIntersection,
               includeDependencies: argv.outputIncludeDeps,
               includeDependents: argv.outputIncludeDependents,
             })
