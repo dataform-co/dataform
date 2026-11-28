@@ -486,7 +486,11 @@ suite("schema creation", () => {
         [["existing_ds"]],
         async (statement) => ({
           rows: [],
-          metadata: statement === "SELECT a" ? validationMetadata : {},
+          // The wrapper reports different metadata, which the task mustn't get.
+          metadata:
+            statement === "SELECT a"
+              ? validationMetadata
+              : { bigquery: { totalBytesProcessed: Long.fromNumber(999) } },
         }),
       );
 
